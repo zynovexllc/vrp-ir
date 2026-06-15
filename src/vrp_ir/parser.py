@@ -283,7 +283,7 @@ def _open_zone(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> FirewallZo
             if i + 1 < len(rest) and rest[i + 1].isdigit():
                 zone_id = Traced(int(rest[i + 1]), SourceRef(fn, ln, _col(raw, rest[i + 1]), raw))
     else:
-        name = rest[0] if rest else ""
+        name = rest[0] if rest and rest[0] != "name" else ""
     src = SourceRef(fn, ln, _col(raw, name), raw)
     zone = FirewallZone(name=Traced(name, src), source=src, zone_id=zone_id)
     cfg.firewall_zones.append(zone)
@@ -313,6 +313,13 @@ def _secpolicy_dispatch(cfg: VrpConfig, rule: Optional[SecurityRule], s: str,
         src = SourceRef(fn, ln, _col(raw, name), raw)
         rule = SecurityRule(name=Traced(name, src), source=src)
         cfg.security_rules.append(rule)
+    elif s.startswith("default action ") or s.startswith("default-action "):
+        # Policy-level default for traffic matching no rule. `default action
+        # permit` is permit-any — the single most important fact NOT to lose,
+        # and it is NOT a rule attribute (it can appear before any rule).
+        prefix = "default action " if s.startswith("default action ") else "default-action "
+        v = s[len(prefix):].strip()
+        cfg.security_default_action = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
     elif rule is not None:
         _secrule_line(rule, s, raw, fn, ln)
     return rule
@@ -347,22 +354,38 @@ def _parse_nat_server(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Non
     kw = {"zone", "protocol", "global", "inside"}
     src = SourceRef(fn, ln, None, raw)
 
-    def tt(tok: str) -> Traced:
-        return Traced(tok, SourceRef(fn, ln, _col(raw, tok), raw))
+    # Per-token columns via an advancing cursor, so repeated values (e.g. the
+    # same port on `global` and `inside`) each resolve to their own occurrence.
+    pos = raw.find("nat server")
+    pos = pos + len("nat server") if pos >= 0 else 0
+    cols: List[Optional[int]] = []
+    for t in toks:
+        i = raw.find(t, pos)
+        cols.append(i if i >= 0 else None)
+        pos = i + len(t) if i >= 0 else pos
 
-    def after(k: str, offset: int) -> Optional[Traced]:
-        if k in toks:
-            i = toks.index(k) + offset
-            if i < len(toks) and toks[i] not in kw:
-                return tt(toks[i])
+    def tt(i: int) -> Traced:
+        return Traced(toks[i], SourceRef(fn, ln, cols[i], raw))
+
+    def slot(k: str, offset: int) -> Optional[Traced]:
+        if k not in toks:
+            return None
+        i = toks.index(k)
+        # A port (offset 2) is only meaningful if the address (offset 1) is a
+        # real value; otherwise reading offset 2 would borrow the next field.
+        if offset == 2 and (i + 1 >= len(toks) or toks[i + 1] in kw):
+            return None
+        j = i + offset
+        if j < len(toks) and toks[j] not in kw:
+            return tt(j)
         return None
 
-    name = tt(toks[0]) if toks and toks[0] not in kw else Traced("", src)
+    name = tt(0) if toks and toks[0] not in kw else Traced("", src)
     cfg.nat_servers.append(NatServer(
         name=name, source=src,
-        zone=after("zone", 1), protocol=after("protocol", 1),
-        global_address=after("global", 1), global_port=after("global", 2),
-        inside_address=after("inside", 1), inside_port=after("inside", 2)))
+        zone=slot("zone", 1), protocol=slot("protocol", 1),
+        global_address=slot("global", 1), global_port=slot("global", 2),
+        inside_address=slot("inside", 1), inside_port=slot("inside", 2)))
 
 
 def _parse_hrp(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:

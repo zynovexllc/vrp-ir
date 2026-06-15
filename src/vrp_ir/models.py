@@ -163,6 +163,7 @@ class VrpConfig:
     static_routes: List[StaticRoute] = field(default_factory=list)
     firewall_zones: List[FirewallZone] = field(default_factory=list)
     security_rules: List[SecurityRule] = field(default_factory=list)
+    security_default_action: Optional[Traced[str]] = None  # policy-level `default action`
     nat_servers: List[NatServer] = field(default_factory=list)
     hrp: Optional[Hrp] = None
 

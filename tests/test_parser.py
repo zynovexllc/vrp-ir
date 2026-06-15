@@ -222,6 +222,41 @@ class TestFirewall(unittest.TestCase):
         self.assertEqual([t.value for t in cfg.security_rules[0].source_zones],
                          ["trust", "dmz"])   # multiple zones OR-combined
 
+    def test_security_policy_default_action(self):
+        # Policy-level `default action permit` (= permit-any) must be captured —
+        # even before any rule — and must not pollute a rule's own action.
+        cfg = parse_text(
+            "security-policy\n"
+            " default action permit\n"
+            " rule name r1\n"
+            "  action deny\n"
+            "#\n")
+        self.assertEqual(cfg.security_default_action.value, "permit")
+        self.assertEqual(cfg.security_rules[0].action.value, "deny")
+        cfg2 = parse_text(            # hyphenated form, appearing after a rule
+            "security-policy\n"
+            " rule name r\n"
+            "  action permit\n"
+            " default-action deny\n"
+            "#\n")
+        self.assertEqual(cfg2.security_default_action.value, "deny")
+
+    def test_nat_server_malformed_global_without_address(self):
+        # `global` with no address must not borrow `inside`'s address as a port.
+        cfg = parse_text("nat server x protocol tcp global inside 10.0.0.2 80\n")
+        n = cfg.nat_servers[0]
+        self.assertIsNone(n.global_address)
+        self.assertIsNone(n.global_port)
+        self.assertEqual(n.inside_address.value, "10.0.0.2")
+        self.assertEqual(n.inside_port.value, "80")
+
+    def test_nat_duplicate_port_distinct_cols(self):
+        # global/inside share port 443; each col must point at its OWN occurrence.
+        n = self.cfg.nat_servers[0]
+        line = open(SAMPLE_USG, encoding="utf-8").readlines()[n.inside_port.source.line - 1]
+        self.assertGreater(n.inside_port.source.col, n.global_port.source.col)
+        self.assertEqual(line[n.inside_port.source.col:n.inside_port.source.col + 3], "443")
+
 
 if __name__ == "__main__":
     unittest.main()
