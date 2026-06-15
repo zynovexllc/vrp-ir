@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vrp-ir"
+version = "0.1.0"
+description = "Source-traceable structured IR for Huawei VRP configurations (parse-time SourceRef)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Zynovex" }]
+keywords = ["huawei", "vrp", "network-automation", "config-parsing", "sourceref", "netdevops"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Telecommunications Industry",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking",
+]
+dependencies = []  # zero runtime dependencies by design
+
+[project.urls]
+Homepage = "https://github.com/zynovexllc/vrp-ir"
+Source = "https://github.com/zynovexllc/vrp-ir"
+
+[project.scripts]
+vrp-ir = "vrp_ir.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
