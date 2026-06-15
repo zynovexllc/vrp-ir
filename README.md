@@ -11,8 +11,9 @@ it came from.
 Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its source line
 ```
 
-> Status: **v0.1 / alpha.** Narrow but real: hostname + interface basics
-> (description, IPv4, admin state, access VLAN, VRF binding), each with full
+> Status: **v0.3 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
+> ACL, static routes) **and USG firewall** objects (`firewall zone`,
+> `security-policy`, `nat server`, `hrp`) — every field carries full source
 > provenance. Roadmap below.
 
 ## Why this exists (the gap)
@@ -43,7 +44,8 @@ pip install -e .
 ## Quick start (CLI)
 
 ```bash
-vrp-ir parse examples/sample-vrp.cfg
+vrp-ir parse examples/sample-vrp.cfg     # routing / switching
+vrp-ir parse examples/sample-usg.cfg     # USG firewall (zones / policy / nat / hrp)
 ```
 
 ```jsonc
@@ -87,12 +89,16 @@ print(ip.address.source)                        # examples/sample-vrp.cfg:11  �
 ## Roadmap
 
 - **v0.1:** hostname + interface basics with SourceRef. ✅
-- **v0.2 (now):** VLANs (batch ranges), VRF (RD/RT), interface enhancements
+- **v0.2:** VLANs (batch ranges), VRF (RD/RT), interface enhancements
   (link-type, trunk allow-pass ranges, Eth-Trunk, dot1q subinterfaces, secondary
   IPv4, VRF binding), ACLs, static routes. ✅
-- **v0.3 (next):** Huawei **USG firewall** objects — `firewall zone`,
-  `security-policy`, `nat`, `hrp` (the global OSS gap; Batfish drops VRP entirely).
-- **v0.3:** acceptance test-case schema (`testCase ↔ intentRef ↔ evidenceRef`)
+- **v0.3 (now):** Huawei **USG firewall** objects — `firewall zone`,
+  `security-policy` (`rule name` with zones / addresses / services / profiles /
+  action / logging), `nat server`, `hrp` (the global OSS gap; Batfish drops VRP
+  entirely). ✅
+- **v0.3.x (next):** `nat-policy` blocks, `ip address-set` / `ip service-set`
+  objects, `vsys`, `firewall defend` / blacklist.
+- **v0.4:** acceptance test-case schema (`testCase ↔ intentRef ↔ evidenceRef`)
   + a report generator (structured results → CN/EN acceptance report).
 - Later: Huawei security-device coverage (USG / WAF / AntiDDoS / 4A).
 
