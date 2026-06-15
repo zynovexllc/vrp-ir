@@ -9,4 +9,4 @@ __all__ = [
     "Vlan", "VlanRange", "Vrf", "Acl", "AclRule", "StaticRoute",
     "SourceRef", "Traced",
 ]
-__version__ = "0.2.0"
+__version__ = "0.2.1"

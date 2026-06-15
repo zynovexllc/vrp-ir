@@ -67,7 +67,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
 
     for lineno, raw in enumerate(text.splitlines(), start=1):
         s = raw.strip()
-        if not s or s == "#" or s == "return" or s == "quit":
+        if not s:
+            continue  # blank lines must NOT close a block (hand-edited/saved .cfg may contain them)
+        if s == "#" or s == "return" or s == "quit":
             ctx_kind, ctx_obj = None, None
             continue
         if s.startswith("!"):
@@ -178,14 +180,22 @@ def _vrf_line(vrf: Vrf, s: str, raw: str, fn: str, ln: int) -> None:
         v = s[len("route-distinguisher "):].strip()
         vrf.route_distinguisher = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
     elif s.startswith("vpn-target "):
+        # Syntax: vpn-target <rt> [<rt> ...] [both | export-extcommunity |
+        # import-extcommunity]. The direction is an optional trailing keyword
+        # whose VRP default (when omitted) is `both`; every preceding token is
+        # a route-target. Misreading `both`/bare as export-only, or dropping
+        # extra RTs on one line, would silently lose VRF import/leak facts.
         rest = s[len("vpn-target "):].split()
-        if rest:
-            rt = rest[0]
+        direction = "both"
+        if rest and rest[-1] in ("both", "export-extcommunity", "import-extcommunity"):
+            direction = rest[-1]
+            rest = rest[:-1]
+        for rt in rest:
             tr = Traced(rt, SourceRef(fn, ln, _col(raw, rt), raw))
-            if "import-extcommunity" in s:
-                vrf.import_targets.append(tr)
-            else:
+            if direction in ("both", "export-extcommunity"):
                 vrf.export_targets.append(tr)
+            if direction in ("both", "import-extcommunity"):
+                vrf.import_targets.append(tr)
 
 
 def _open_acl(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Acl:
