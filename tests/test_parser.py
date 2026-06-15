@@ -79,6 +79,66 @@ class TestParser(unittest.TestCase):
         cfg = parse_text("interface GE0/0/9\n ip address 10.0.0.1 999.0.0.0\n#\n")
         self.assertEqual(cfg.interfaces[0].ipv4, [])
 
+    def test_vpn_target_directions_and_multi(self):
+        # `both` and a bare vpn-target (VRP default == both) must populate BOTH
+        # import and export; a single line may carry several route-targets.
+        cfg = parse_text(
+            "ip vpn-instance V\n"
+            " ipv4-family\n"
+            "  vpn-target 1:1 both\n"
+            "  vpn-target 2:2\n"
+            "  vpn-target 3:3 4:4 export-extcommunity\n"
+            "  vpn-target 5:5 import-extcommunity\n")
+        vrf = cfg.vrfs[0]
+        self.assertEqual([t.value for t in vrf.export_targets],
+                         ["1:1", "2:2", "3:3", "4:4"])
+        self.assertEqual([t.value for t in vrf.import_targets],
+                         ["1:1", "2:2", "5:5"])
+        rt44 = next(t for t in vrf.export_targets if t.value == "4:4")
+        self.assertIn("4:4", rt44.source.raw)  # provenance survives multi-RT
+
+    def test_blank_line_does_not_truncate_block(self):
+        # A blank line inside a block must not silently drop the rest of it.
+        cfg = parse_text(
+            "interface GE0/0/5\n"
+            " description X\n"
+            "\n"
+            " ip address 1.2.3.4 24\n"
+            "#\n")
+        itf = cfg.interfaces[0]
+        self.assertEqual(itf.description.value, "X")
+        self.assertEqual(itf.ipv4[0].address.value, "1.2.3.4")
+        self.assertEqual(itf.ipv4[0].prefix_length.value, 24)
+
+    def test_sample_vrf_shared_multi_rt_both(self):
+        # The de-friendlied sample now guards the vpn-target fixes directly.
+        shared = next(v for v in self.cfg.vrfs if v.name.value == "SHARED")
+        self.assertEqual([t.value for t in shared.export_targets],
+                         ["65000:200", "65000:201", "65000:300"])
+        self.assertEqual([t.value for t in shared.import_targets],
+                         ["65000:200", "65000:201", "65000:300", "65000:999"])
+
+    def test_vpn_target_evpn_trailing_qualifier(self):
+        # Direction keyword may be followed by an address-family qualifier
+        # (EVPN); it must still set direction, and neither the keyword nor the
+        # `evpn` qualifier may leak in as a fake route-target ("no garbage facts").
+        cfg = parse_text(
+            "ip vpn-instance E\n"
+            " ipv4-family\n"
+            "  vpn-target 1:1 export-extcommunity evpn\n"
+            "  vpn-target 2:2 import-extcommunity evpn\n"
+            "  vpn-target 3:3 both evpn\n")
+        vrf = cfg.vrfs[0]
+        self.assertEqual([t.value for t in vrf.export_targets], ["1:1", "3:3"])
+        self.assertEqual([t.value for t in vrf.import_targets], ["2:2", "3:3"])
+        leaked = {t.value for t in vrf.export_targets + vrf.import_targets}
+        self.assertFalse(leaked & {"evpn", "export-extcommunity", "import-extcommunity", "both"})
+
+    def test_sample_vrf_evpn_targets(self):
+        evpn = next(v for v in self.cfg.vrfs if v.name.value == "EVPN1")
+        self.assertEqual([t.value for t in evpn.export_targets], ["65000:400"])
+        self.assertEqual([t.value for t in evpn.import_targets], ["65000:401"])
+
 
 if __name__ == "__main__":
     unittest.main()

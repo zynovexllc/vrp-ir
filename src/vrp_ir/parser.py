@@ -67,7 +67,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
 
     for lineno, raw in enumerate(text.splitlines(), start=1):
         s = raw.strip()
-        if not s or s == "#" or s == "return" or s == "quit":
+        if not s:
+            continue  # blank lines must NOT close a block (hand-edited/saved .cfg may contain them)
+        if s == "#" or s == "return" or s == "quit":
             ctx_kind, ctx_obj = None, None
             continue
         if s.startswith("!"):
@@ -178,14 +180,27 @@ def _vrf_line(vrf: Vrf, s: str, raw: str, fn: str, ln: int) -> None:
         v = s[len("route-distinguisher "):].strip()
         vrf.route_distinguisher = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
     elif s.startswith("vpn-target "):
-        rest = s[len("vpn-target "):].split()
-        if rest:
-            rt = rest[0]
+        # Syntax: vpn-target <rt> [<rt> ...] [both | export-extcommunity |
+        # import-extcommunity] [evpn]. The direction keyword (VRP default
+        # `both`) may be followed by an address-family qualifier (e.g. EVPN's
+        # `vpn-target 1:1 export-extcommunity evpn`), so it is NOT necessarily
+        # the last token -> locate it by membership, not by position. Route-
+        # targets are the colon-bearing tokens (ASN:nn / IP:nn); any keyword or
+        # qualifier is skipped rather than surfaced as a garbage RT.
+        toks = s[len("vpn-target "):].split()
+        direction = "both"
+        for kw in ("export-extcommunity", "import-extcommunity", "both"):
+            if kw in toks:
+                direction = kw
+                break
+        for rt in toks:
+            if ":" not in rt:
+                continue
             tr = Traced(rt, SourceRef(fn, ln, _col(raw, rt), raw))
-            if "import-extcommunity" in s:
-                vrf.import_targets.append(tr)
-            else:
+            if direction in ("both", "export-extcommunity"):
                 vrf.export_targets.append(tr)
+            if direction in ("both", "import-extcommunity"):
+                vrf.import_targets.append(tr)
 
 
 def _open_acl(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Acl:

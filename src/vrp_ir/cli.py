@@ -1,4 +1,4 @@
-"""Command-line interface: ``vrp-ir parse <config> [--json]``.
+"""Command-line interface: ``vrp-ir parse <config> [--indent N]``.
 
 Outputs the parsed IR as JSON (every value carries its SourceRef), so it can
 feed downstream tooling (topology builders, acceptance checks, report
