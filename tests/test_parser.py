@@ -5,6 +5,7 @@ import unittest
 from vrp_ir import parse_file, parse_text
 
 SAMPLE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "examples", "sample-vrp.cfg")
+SAMPLE_USG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "examples", "sample-usg.cfg")
 
 
 class TestParser(unittest.TestCase):
@@ -138,6 +139,88 @@ class TestParser(unittest.TestCase):
         evpn = next(v for v in self.cfg.vrfs if v.name.value == "EVPN1")
         self.assertEqual([t.value for t in evpn.export_targets], ["65000:400"])
         self.assertEqual([t.value for t in evpn.import_targets], ["65000:401"])
+
+
+class TestFirewall(unittest.TestCase):
+    """v0.3 USG firewall objects (zone / security-policy / nat server / hrp)."""
+
+    def setUp(self):
+        self.cfg = parse_file(SAMPLE_USG)
+
+    def test_zones(self):
+        z = {x.name.value: x for x in self.cfg.firewall_zones}
+        self.assertEqual(set(z), {"trust", "untrust", "DMZ-WEB"})
+        self.assertEqual(z["trust"].priority.value, 85)
+        self.assertEqual([i.value for i in z["trust"].interfaces], ["GigabitEthernet0/0/1"])
+        self.assertEqual(z["DMZ-WEB"].zone_id.value, 4)        # custom zone id
+        self.assertEqual(z["DMZ-WEB"].priority.value, 50)
+        self.assertIsNone(z["trust"].zone_id)                  # built-in zone has no id
+
+    def test_security_rules_order_and_fields(self):
+        rules = self.cfg.security_rules
+        self.assertEqual([r.name.value for r in rules],
+                         ["trust-to-dmz-web", "mgmt-ssh", "default-deny"])
+        web = rules[0]
+        self.assertEqual([t.value for t in web.source_zones], ["trust"])
+        self.assertEqual([t.value for t in web.destination_zones], ["DMZ-WEB"])
+        self.assertEqual([t.value for t in web.services], ["http", "https"])
+        self.assertEqual([t.value for t in web.destination_addresses],
+                         ["address-set web-servers"])   # opaque set reference kept
+        self.assertEqual([t.value for t in web.profiles], ["av default"])
+        self.assertEqual(web.action.value, "permit")
+
+    def test_session_logging_and_default_deny(self):
+        rules = {r.name.value: r for r in self.cfg.security_rules}
+        self.assertTrue(rules["mgmt-ssh"].session_logging.value)
+        self.assertIsNone(rules["trust-to-dmz-web"].session_logging)  # auditor seed
+        deny = rules["default-deny"]
+        self.assertEqual(deny.action.value, "deny")
+        self.assertEqual(deny.source_zones, [])   # deny-all has no zone scoping
+
+    def test_nat_server(self):
+        n = self.cfg.nat_servers[0]
+        self.assertEqual(n.name.value, "web-pub")
+        self.assertEqual(n.zone.value, "untrust")
+        self.assertEqual(n.protocol.value, "tcp")
+        self.assertEqual(n.global_address.value, "203.0.113.10")
+        self.assertEqual(n.global_port.value, "443")
+        self.assertEqual(n.inside_address.value, "10.10.10.10")
+        self.assertEqual(n.inside_port.value, "443")
+
+    def test_hrp(self):
+        h = self.cfg.hrp
+        self.assertTrue(h.enabled.value)
+        self.assertEqual(h.heartbeat_interface.value, "GigabitEthernet0/0/7")
+        self.assertEqual(h.peer.value, "10.255.255.2")
+        self.assertIn("hrp mirror session enable", [d.value for d in h.directives])
+
+    def test_usg_reuses_routing_engine(self):
+        # USG is VRP same-origin: interfaces parse with the existing engine.
+        by = {i.name.value: i for i in self.cfg.interfaces}
+        self.assertEqual(by["GigabitEthernet0/0/2"].ipv4[0].prefix_length.value, 29)
+
+    def test_firewall_sourceref_invariant(self):
+        zone = next(z for z in self.cfg.firewall_zones if z.name.value == "DMZ-WEB")
+        ref = zone.interfaces[0].source
+        with open(SAMPLE_USG, encoding="utf-8") as f:
+            lines = f.readlines()
+        self.assertIn("GigabitEthernet0/0/3", lines[ref.line - 1])
+
+    def test_builtin_zone_and_multi_zone_rule(self):
+        cfg = parse_text(
+            "firewall zone dmz\n"
+            " set priority 50\n"
+            "#\n"
+            "security-policy\n"
+            " rule name multi\n"
+            "  source-zone trust\n"
+            "  source-zone dmz\n"
+            "  action permit\n"
+            "#\n")
+        self.assertEqual(cfg.firewall_zones[0].name.value, "dmz")
+        self.assertIsNone(cfg.firewall_zones[0].zone_id)
+        self.assertEqual([t.value for t in cfg.security_rules[0].source_zones],
+                         ["trust", "dmz"])   # multiple zones OR-combined
 
 
 if __name__ == "__main__":

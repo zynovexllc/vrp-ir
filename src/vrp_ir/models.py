@@ -9,8 +9,8 @@ Every meaningful field is wrapped in :class:`~vrp_ir.sourceref.Traced` so it
 carries a :class:`~vrp_ir.sourceref.SourceRef` back to its origin line. The IR
 is plain ``dataclasses`` (zero runtime dependencies).
 
-USG firewall objects (zone / security-policy / nat / hrp) are added in a later
-milestone and slot into the same generic serializer below.
+USG firewall objects (zone / security-policy / nat server / hrp) are added in
+v0.3 and slot into the same generic serializer below.
 """
 from __future__ import annotations
 
@@ -93,6 +93,64 @@ class Interface:
 
 
 @dataclass
+class FirewallZone:
+    """A security zone (``firewall zone ...``), built-in or custom.
+
+    Acceptance relies on every interface being bound to exactly one zone and on
+    the priority ordering (higher priority -> more trusted; inter-zone traffic
+    is denied by default), so the bound interfaces and priority are tracked.
+    """
+    name: Traced[str]                      # trust/untrust/dmz/local or custom name
+    source: SourceRef
+    zone_id: Optional[Traced[int]] = None  # `firewall zone name <X> id <N>`
+    priority: Optional[Traced[int]] = None  # `set priority <N>`
+    interfaces: List[Traced[str]] = field(default_factory=list)  # `add interface <X>`
+
+
+@dataclass
+class SecurityRule:
+    """One ``rule name <name>`` inside ``security-policy`` (the acceptance core).
+
+    Multiple source/destination zones, addresses and services are OR-combined,
+    so each is a list. ``action`` (permit/deny), ``session_logging`` and content
+    ``profiles`` feed the auditor checks (e.g. permit-any, missing logging).
+    """
+    name: Traced[str]                      # rule name (may be non-ASCII)
+    source: SourceRef
+    source_zones: List[Traced[str]] = field(default_factory=list)
+    destination_zones: List[Traced[str]] = field(default_factory=list)
+    source_addresses: List[Traced[str]] = field(default_factory=list)
+    destination_addresses: List[Traced[str]] = field(default_factory=list)
+    services: List[Traced[str]] = field(default_factory=list)
+    profiles: List[Traced[str]] = field(default_factory=list)  # av / ips / ...
+    action: Optional[Traced[str]] = None             # permit | deny
+    session_logging: Optional[Traced[bool]] = None
+
+
+@dataclass
+class NatServer:
+    """Static destination NAT (``nat server ...``, one-line form)."""
+    name: Traced[str]
+    source: SourceRef
+    zone: Optional[Traced[str]] = None
+    protocol: Optional[Traced[str]] = None
+    global_address: Optional[Traced[str]] = None
+    global_port: Optional[Traced[str]] = None
+    inside_address: Optional[Traced[str]] = None
+    inside_port: Optional[Traced[str]] = None
+
+
+@dataclass
+class Hrp:
+    """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
+    source: SourceRef
+    enabled: Traced[bool]
+    heartbeat_interface: Optional[Traced[str]] = None  # `hrp interface <X>`
+    peer: Optional[Traced[str]] = None                 # `... remote <ip>`
+    directives: List[Traced[str]] = field(default_factory=list)  # other `hrp ...` lines
+
+
+@dataclass
 class VrpConfig:
     source_file: str
     software_version: Optional[Traced[str]] = None
@@ -103,6 +161,10 @@ class VrpConfig:
     acls: List[Acl] = field(default_factory=list)
     interfaces: List[Interface] = field(default_factory=list)
     static_routes: List[StaticRoute] = field(default_factory=list)
+    firewall_zones: List[FirewallZone] = field(default_factory=list)
+    security_rules: List[SecurityRule] = field(default_factory=list)
+    nat_servers: List[NatServer] = field(default_factory=list)
+    hrp: Optional[Hrp] = None
 
     def to_dict(self) -> dict:
         """JSON-serialisable view; keeps SourceRef alongside each traced value."""

@@ -1,16 +1,18 @@
-"""Huawei VRP config text -> :class:`VrpConfig` (v0.2 routing/switching).
+"""Huawei VRP config text -> :class:`VrpConfig` (routing/switching + USG firewall).
 
 Robust to VRP's `#`-delimited sections: a section opener keyword (interface /
-vlan / ip vpn-instance / acl) sets the current context regardless of leading
-whitespace; `#`/blank lines close it; one-line globals (sysname, ip
-route-static, vlan batch, !Software Version) are dispatched by keyword.
+vlan / ip vpn-instance / acl / firewall zone / security-policy) sets the current
+context regardless of leading whitespace; `#`/`return`/`quit` close it (blank
+lines do not); one-line globals (sysname, ip route-static, vlan batch, nat
+server, hrp, !Software Version) are dispatched by keyword.
 """
 from __future__ import annotations
 
 from typing import List, Optional
 
-from .models import (Acl, AclRule, Interface, Ipv4Address, StaticRoute, Vlan,
-                     VlanRange, Vrf, VrpConfig)
+from .models import (Acl, AclRule, FirewallZone, Hrp, Interface, Ipv4Address,
+                     NatServer, SecurityRule, StaticRoute, Vlan, VlanRange,
+                     Vrf, VrpConfig)
 from .sourceref import SourceRef, Traced
 
 
@@ -62,7 +64,7 @@ def _parse_vlan_ranges(tokens: List[str], src: SourceRef) -> List[VlanRange]:
 
 def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
     cfg = VrpConfig(source_file=filename)
-    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl
+    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy
     ctx_obj = None
 
     for lineno, raw in enumerate(text.splitlines(), start=1):
@@ -109,6 +111,13 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             ctx_obj = _open_acl(cfg, s, raw, filename, lineno)
             ctx_kind = "acl"
             continue
+        if s.startswith("firewall zone "):
+            ctx_obj = _open_zone(cfg, s, raw, filename, lineno)
+            ctx_kind = "fwzone"
+            continue
+        if s == "security-policy":
+            ctx_kind, ctx_obj = "secpolicy", None
+            continue
 
         # --- one-line globals ---
         if s.startswith("sysname "):
@@ -117,6 +126,12 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
         if s.startswith("ip route-static "):
             _parse_static_route(cfg, s, raw, filename, lineno)
+            continue
+        if s.startswith("nat server "):
+            _parse_nat_server(cfg, s, raw, filename, lineno)
+            continue
+        if s.startswith("hrp "):
+            _parse_hrp(cfg, s, raw, filename, lineno)
             continue
 
         # --- body lines: dispatch to current context ---
@@ -128,6 +143,10 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             _vrf_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "acl":
             _acl_line(ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "fwzone":
+            _zone_line(ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "secpolicy":
+            ctx_obj = _secpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
 
     return cfg
 
@@ -252,6 +271,117 @@ def _parse_static_route(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> N
         destination=Traced(dest, SourceRef(fn, ln, _col(raw, dest), raw)),
         mask=Traced(mask, src), next_hop=Traced(nh, src), source=src,
         vpn_instance=vpn, preference=pref))
+
+
+def _open_zone(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> FirewallZone:
+    rest = s[len("firewall zone "):].split()
+    zone_id = None
+    if rest[:1] == ["name"] and len(rest) >= 2:
+        name = rest[1]
+        if "id" in rest:
+            i = rest.index("id")
+            if i + 1 < len(rest) and rest[i + 1].isdigit():
+                zone_id = Traced(int(rest[i + 1]), SourceRef(fn, ln, _col(raw, rest[i + 1]), raw))
+    else:
+        name = rest[0] if rest else ""
+    src = SourceRef(fn, ln, _col(raw, name), raw)
+    zone = FirewallZone(name=Traced(name, src), source=src, zone_id=zone_id)
+    cfg.firewall_zones.append(zone)
+    return zone
+
+
+def _zone_line(zone: FirewallZone, s: str, raw: str, fn: str, ln: int) -> None:
+    if s.startswith("set priority "):
+        v = s[len("set priority "):].strip()
+        if v.isdigit():
+            zone.priority = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+    elif s.startswith("add interface "):
+        v = s[len("add interface "):].strip()
+        zone.interfaces.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+
+
+def _secpolicy_dispatch(cfg: VrpConfig, rule: Optional[SecurityRule], s: str,
+                        raw: str, fn: str, ln: int) -> Optional[SecurityRule]:
+    """Handle a line inside ``security-policy``; return the current rule.
+
+    ``rule name <name>`` opens a new rule (implicitly closing the previous one,
+    which is how VRP nests rules with no ``#`` between them); other lines are
+    attributes of the current rule.
+    """
+    if s.startswith("rule name "):
+        name = s[len("rule name "):].strip()
+        src = SourceRef(fn, ln, _col(raw, name), raw)
+        rule = SecurityRule(name=Traced(name, src), source=src)
+        cfg.security_rules.append(rule)
+    elif rule is not None:
+        _secrule_line(rule, s, raw, fn, ln)
+    return rule
+
+
+def _secrule_line(rule: SecurityRule, s: str, raw: str, fn: str, ln: int) -> None:
+    def add(prefix: str, lst: List) -> None:
+        v = s[len(prefix):].strip()
+        lst.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+
+    if s.startswith("source-zone "):
+        add("source-zone ", rule.source_zones)
+    elif s.startswith("destination-zone "):
+        add("destination-zone ", rule.destination_zones)
+    elif s.startswith("source-address "):
+        add("source-address ", rule.source_addresses)
+    elif s.startswith("destination-address "):
+        add("destination-address ", rule.destination_addresses)
+    elif s.startswith("service "):
+        add("service ", rule.services)
+    elif s.startswith("profile "):
+        add("profile ", rule.profiles)
+    elif s.startswith("action "):
+        v = s[len("action "):].strip()
+        rule.action = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+    elif s.startswith("session logging"):
+        rule.session_logging = Traced(True, SourceRef(fn, ln, None, raw))
+
+
+def _parse_nat_server(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    toks = s[len("nat server "):].split()
+    kw = {"zone", "protocol", "global", "inside"}
+    src = SourceRef(fn, ln, None, raw)
+
+    def tt(tok: str) -> Traced:
+        return Traced(tok, SourceRef(fn, ln, _col(raw, tok), raw))
+
+    def after(k: str, offset: int) -> Optional[Traced]:
+        if k in toks:
+            i = toks.index(k) + offset
+            if i < len(toks) and toks[i] not in kw:
+                return tt(toks[i])
+        return None
+
+    name = tt(toks[0]) if toks and toks[0] not in kw else Traced("", src)
+    cfg.nat_servers.append(NatServer(
+        name=name, source=src,
+        zone=after("zone", 1), protocol=after("protocol", 1),
+        global_address=after("global", 1), global_port=after("global", 2),
+        inside_address=after("inside", 1), inside_port=after("inside", 2)))
+
+
+def _parse_hrp(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    src = SourceRef(fn, ln, None, raw)
+    if cfg.hrp is None:
+        cfg.hrp = Hrp(source=src, enabled=Traced(False, src))
+    hrp = cfg.hrp
+    if s == "hrp enable":
+        hrp.enabled = Traced(True, src)
+    elif s.startswith("hrp interface "):
+        toks = s[len("hrp interface "):].split()
+        if toks:
+            hrp.heartbeat_interface = Traced(toks[0], SourceRef(fn, ln, _col(raw, toks[0]), raw))
+        if "remote" in toks:
+            i = toks.index("remote")
+            if i + 1 < len(toks):
+                hrp.peer = Traced(toks[i + 1], SourceRef(fn, ln, _col(raw, toks[i + 1]), raw))
+    else:
+        hrp.directives.append(Traced(s, src))
 
 
 def parse_file(path: str) -> VrpConfig:
