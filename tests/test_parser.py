@@ -118,6 +118,27 @@ class TestParser(unittest.TestCase):
         self.assertEqual([t.value for t in shared.import_targets],
                          ["65000:200", "65000:201", "65000:300", "65000:999"])
 
+    def test_vpn_target_evpn_trailing_qualifier(self):
+        # Direction keyword may be followed by an address-family qualifier
+        # (EVPN); it must still set direction, and neither the keyword nor the
+        # `evpn` qualifier may leak in as a fake route-target ("no garbage facts").
+        cfg = parse_text(
+            "ip vpn-instance E\n"
+            " ipv4-family\n"
+            "  vpn-target 1:1 export-extcommunity evpn\n"
+            "  vpn-target 2:2 import-extcommunity evpn\n"
+            "  vpn-target 3:3 both evpn\n")
+        vrf = cfg.vrfs[0]
+        self.assertEqual([t.value for t in vrf.export_targets], ["1:1", "3:3"])
+        self.assertEqual([t.value for t in vrf.import_targets], ["2:2", "3:3"])
+        leaked = {t.value for t in vrf.export_targets + vrf.import_targets}
+        self.assertFalse(leaked & {"evpn", "export-extcommunity", "import-extcommunity", "both"})
+
+    def test_sample_vrf_evpn_targets(self):
+        evpn = next(v for v in self.cfg.vrfs if v.name.value == "EVPN1")
+        self.assertEqual([t.value for t in evpn.export_targets], ["65000:400"])
+        self.assertEqual([t.value for t in evpn.import_targets], ["65000:401"])
+
 
 if __name__ == "__main__":
     unittest.main()

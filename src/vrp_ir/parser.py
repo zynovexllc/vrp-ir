@@ -181,16 +181,21 @@ def _vrf_line(vrf: Vrf, s: str, raw: str, fn: str, ln: int) -> None:
         vrf.route_distinguisher = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
     elif s.startswith("vpn-target "):
         # Syntax: vpn-target <rt> [<rt> ...] [both | export-extcommunity |
-        # import-extcommunity]. The direction is an optional trailing keyword
-        # whose VRP default (when omitted) is `both`; every preceding token is
-        # a route-target. Misreading `both`/bare as export-only, or dropping
-        # extra RTs on one line, would silently lose VRF import/leak facts.
-        rest = s[len("vpn-target "):].split()
+        # import-extcommunity] [evpn]. The direction keyword (VRP default
+        # `both`) may be followed by an address-family qualifier (e.g. EVPN's
+        # `vpn-target 1:1 export-extcommunity evpn`), so it is NOT necessarily
+        # the last token -> locate it by membership, not by position. Route-
+        # targets are the colon-bearing tokens (ASN:nn / IP:nn); any keyword or
+        # qualifier is skipped rather than surfaced as a garbage RT.
+        toks = s[len("vpn-target "):].split()
         direction = "both"
-        if rest and rest[-1] in ("both", "export-extcommunity", "import-extcommunity"):
-            direction = rest[-1]
-            rest = rest[:-1]
-        for rt in rest:
+        for kw in ("export-extcommunity", "import-extcommunity", "both"):
+            if kw in toks:
+                direction = kw
+                break
+        for rt in toks:
+            if ":" not in rt:
+                continue
             tr = Traced(rt, SourceRef(fn, ln, _col(raw, rt), raw))
             if direction in ("both", "export-extcommunity"):
                 vrf.export_targets.append(tr)
