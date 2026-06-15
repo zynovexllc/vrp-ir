@@ -1,20 +1,20 @@
 """Intermediate Representation (IR) for Huawei VRP configurations.
 
-v0.1 scope (intentionally narrow, see docs/spec-v0.1.md):
-  - device hostname (``sysname``)
-  - interfaces: name, description, IPv4 addresses, admin state, access VLAN,
-    bound VPN-instance (VRF)
+v0.2 scope (routing/switching): hostname, software version, VLANs (incl. batch
+ranges), VRFs (vpn-instance + RD/RT), interfaces (link-type, default/trunk
+VLANs incl. ranges, Eth-Trunk membership, dot1q subinterfaces, secondary IPv4,
+VRF binding, admin state), ACLs (number/name + rules), static routes.
 
 Every meaningful field is wrapped in :class:`~vrp_ir.sourceref.Traced` so it
-carries a :class:`~vrp_ir.sourceref.SourceRef` back to its origin line.
+carries a :class:`~vrp_ir.sourceref.SourceRef` back to its origin line. The IR
+is plain ``dataclasses`` (zero runtime dependencies).
 
-The IR is plain ``dataclasses`` (zero runtime dependencies) so the core library
-stays small and easy to embed. Richer constructs (VRF/VLAN objects, ACL,
-routing, security policies) are deferred to later milestones.
+USG firewall objects (zone / security-policy / nat / hrp) are added in a later
+milestone and slot into the same generic serializer below.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from typing import List, Optional
 
 from .sourceref import SourceRef, Traced
@@ -22,61 +22,113 @@ from .sourceref import SourceRef, Traced
 
 @dataclass
 class Ipv4Address:
-    """An IPv4 address + prefix length parsed from an interface."""
-
     address: Traced[str]
     prefix_length: Traced[int]
+    is_secondary: bool = False
+
+
+@dataclass
+class VlanRange:
+    """A VLAN id or an inclusive range (``vlan batch 1000 to 1002``)."""
+    start: int
+    end: int  # == start for a single VLAN
+    source: SourceRef
+
+
+@dataclass
+class Vlan:
+    vlan_id: Traced[int]
+    source: SourceRef
+    description: Optional[Traced[str]] = None
+
+
+@dataclass
+class Vrf:
+    name: Traced[str]
+    source: SourceRef
+    route_distinguisher: Optional[Traced[str]] = None
+    export_targets: List[Traced[str]] = field(default_factory=list)
+    import_targets: List[Traced[str]] = field(default_factory=list)
+
+
+@dataclass
+class AclRule:
+    seq: Traced[int]
+    action: Traced[str]            # permit | deny
+    source: SourceRef
+    body: Optional[Traced[str]] = None  # remaining match text (raw, traced)
+
+
+@dataclass
+class Acl:
+    identifier: Traced[str]        # number (e.g. "3000") or name
+    source: SourceRef
+    kind: Optional[Traced[str]] = None  # basic | advance (named ACLs)
+    rules: List[AclRule] = field(default_factory=list)
+
+
+@dataclass
+class StaticRoute:
+    destination: Traced[str]
+    mask: Traced[str]
+    next_hop: Traced[str]
+    source: SourceRef
+    vpn_instance: Optional[Traced[str]] = None
+    preference: Optional[Traced[int]] = None
 
 
 @dataclass
 class Interface:
-    """A single ``interface`` stanza."""
-
     name: Traced[str]
-    source: SourceRef  # the `interface <name>` line itself
+    source: SourceRef
     description: Optional[Traced[str]] = None
     ipv4: List[Ipv4Address] = field(default_factory=list)
     shutdown: Optional[Traced[bool]] = None
-    access_vlan: Optional[Traced[int]] = None
-    vpn_instance: Optional[Traced[str]] = None  # VRP: `ip binding vpn-instance X`
+    link_type: Optional[Traced[str]] = None       # access | trunk | hybrid
+    default_vlan: Optional[Traced[int]] = None     # port default vlan <id>
+    trunk_vlans: List[VlanRange] = field(default_factory=list)  # allow-pass
+    eth_trunk: Optional[Traced[int]] = None        # member: eth-trunk <id>
+    dot1q_vlan: Optional[Traced[int]] = None       # subif: vlan-type dot1q <id>
+    vpn_instance: Optional[Traced[str]] = None     # ip binding vpn-instance <x>
 
 
 @dataclass
 class VrpConfig:
-    """Top-level parsed model of a single VRP configuration file."""
-
     source_file: str
+    software_version: Optional[Traced[str]] = None
     hostname: Optional[Traced[str]] = None
+    vlan_batches: List[VlanRange] = field(default_factory=list)
+    vlans: List[Vlan] = field(default_factory=list)
+    vrfs: List[Vrf] = field(default_factory=list)
+    acls: List[Acl] = field(default_factory=list)
     interfaces: List[Interface] = field(default_factory=list)
+    static_routes: List[StaticRoute] = field(default_factory=list)
 
     def to_dict(self) -> dict:
-        """JSON-serialisable view that keeps SourceRef alongside each value."""
-
-        def tr(t: Optional[Traced]) -> Optional[dict]:
-            if t is None:
-                return None
-            return {"value": t.value, "source": _src(t.source)}
-
-        return {
-            "source_file": self.source_file,
-            "hostname": tr(self.hostname),
-            "interfaces": [
-                {
-                    "name": tr(itf.name),
-                    "source": _src(itf.source),
-                    "description": tr(itf.description),
-                    "ipv4": [
-                        {"address": tr(a.address), "prefix_length": tr(a.prefix_length)}
-                        for a in itf.ipv4
-                    ],
-                    "shutdown": tr(itf.shutdown),
-                    "access_vlan": tr(itf.access_vlan),
-                    "vpn_instance": tr(itf.vpn_instance),
-                }
-                for itf in self.interfaces
-            ],
-        }
+        """JSON-serialisable view; keeps SourceRef alongside each traced value."""
+        return _to_jsonable(self)
 
 
-def _src(s: SourceRef) -> dict:
-    return {"file": s.file, "line": s.line, "col": s.col}
+def _to_jsonable(obj):
+    """Recursively serialise IR objects, Traced values and SourceRefs to JSON.
+
+    - Traced -> {"value": <jsonable>, "source": <sourceref>}
+    - SourceRef -> {"file","line","col"}
+    - dataclass -> {field: jsonable}  (None fields omitted to keep output lean)
+    - list -> [jsonable]
+    """
+    if isinstance(obj, Traced):
+        return {"value": _to_jsonable(obj.value), "source": _to_jsonable(obj.source)}
+    if isinstance(obj, SourceRef):
+        return {"file": obj.file, "line": obj.line, "col": obj.col}
+    if is_dataclass(obj) and not isinstance(obj, type):
+        out = {}
+        for f in fields(obj):
+            val = getattr(obj, f.name)
+            if val is None or (isinstance(val, list) and not val):
+                continue
+            out[f.name] = _to_jsonable(val)
+        return out
+    if isinstance(obj, list):
+        return [_to_jsonable(x) for x in obj]
+    return obj
