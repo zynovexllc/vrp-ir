@@ -86,9 +86,12 @@ print(ip.address.source)                        # examples/sample-vrp.cfg:11  �
 
 ## Roadmap
 
-- **v0.1 (now):** hostname + interface basics with SourceRef. ✅
-- **v0.2:** L2/L3 topology view (interfaces + LLDP neighbors via `ntc-templates`),
-  VRF/VLAN objects.
+- **v0.1:** hostname + interface basics with SourceRef. ✅
+- **v0.2 (now):** VLANs (batch ranges), VRF (RD/RT), interface enhancements
+  (link-type, trunk allow-pass ranges, Eth-Trunk, dot1q subinterfaces, secondary
+  IPv4, VRF binding), ACLs, static routes. ✅
+- **v0.3 (next):** Huawei **USG firewall** objects — `firewall zone`,
+  `security-policy`, `nat`, `hrp` (the global OSS gap; Batfish drops VRP entirely).
 - **v0.3:** acceptance test-case schema (`testCase ↔ intentRef ↔ evidenceRef`)
   + a report generator (structured results → CN/EN acceptance report).
 - Later: Huawei security-device coverage (USG / WAF / AntiDDoS / 4A).
