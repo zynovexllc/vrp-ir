@@ -155,17 +155,20 @@ rendered report at
 
 ## Commercial / support
 
-`vrp-ir` is free and open source (Apache-2.0). It is the open foundation of
-**AegisTwin** — a carrier/data-center security-integration **acceptance**
-workbench (HLD/LLD → traceable topology → acceptance advisor → evidence chain →
-sign-off report). If you need:
+`vrp-ir` is free and open source (Apache-2.0), and it stays that way.
 
-- Huawei **security-device** acceptance (USG/WAF/AntiDDoS/4A),
-- HLD/LLD → traceable acceptance test cases,
-- customer-grade, auditable acceptance reports (incl. MLPS / carrier formats),
+It is the **open core of AegisTwin** — an acceptance workbench for carrier and
+data-center security integration (HLD/LLD → traceable topology → acceptance
+advisor → evidence chain → sign-off report). If you liked `vrp-ir`, AegisTwin
+**builds on top of it** for teams that deliver acceptance at scale: Huawei
+security-device coverage (USG / WAF / AntiDDoS / 4A), HLD/LLD → traceable
+acceptance test cases, and customer-grade, auditable reports (incl. MLPS /
+carrier formats).
 
-→ open an issue tagged `commercial`, or reach out about a **paid workflow
-review / design-partner pilot**.
+See the **[open-source vs. commercial comparison](docs/commercial.md)**.
+
+**Talk to us** about a paid workflow review or a design-partner pilot →
+**support@zynovexllc.com**.
 
 ## Contributing
 
