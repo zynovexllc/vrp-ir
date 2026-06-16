@@ -31,6 +31,8 @@ CHECKS_META: Dict[str, str] = {
     "FW-HRP-INCOMPLETE": "HRP enabled with heartbeat interface and remote peer configured",
     "FW-MGMT-TELNET": "Telnet management access is disabled (cleartext protocol)",
     "FW-MGMT-HTTP": "HTTP web management is disabled (cleartext protocol; use HTTPS)",
+    "FW-MGMT-VTY-TELNET": "VTY management lines do not accept Telnet (cleartext protocol)",
+    "FW-MGMT-VTY-NO-ACL": "VTY management lines restrict inbound source with an ACL",
 }
 
 
@@ -264,9 +266,38 @@ def _check_mgmt_http(cfg: VrpConfig) -> Iterable[Finding]:
         [h.source])
 
 
+def _check_vty_telnet(cfg: VrpConfig) -> Iterable[Finding]:
+    for ui in cfg.user_interfaces:
+        if ui.kind.value != "vty":
+            continue
+        for proto in ui.protocol_inbound:
+            if proto.value.lower() in ("telnet", "all"):
+                yield Finding(
+                    "FW-MGMT-VTY-TELNET", "high", "fail",
+                    f"VTY {ui.first.value}–{ui.last.value if ui.last else ui.first.value} "
+                    f"accepts Telnet (protocol inbound {proto.value}); management traffic "
+                    f"is transmitted in cleartext. Restrict to SSH only.",
+                    [proto.source])
+                break
+
+
+def _check_vty_no_acl(cfg: VrpConfig) -> Iterable[Finding]:
+    for ui in cfg.user_interfaces:
+        if ui.kind.value != "vty":
+            continue
+        if ui.protocol_inbound and ui.acl_inbound is None:
+            yield Finding(
+                "FW-MGMT-VTY-NO-ACL", "medium", "warn",
+                f"VTY {ui.first.value}–{ui.last.value if ui.last else ui.first.value} "
+                f"has no inbound ACL; the management line is reachable from any source. "
+                f"Apply 'acl <id> inbound' to restrict access.",
+                [ui.source])
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
-          _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http]
+          _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
+          _check_vty_telnet, _check_vty_no_acl]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
