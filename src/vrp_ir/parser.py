@@ -145,6 +145,14 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         if s.startswith("hrp "):
             _parse_hrp(cfg, s, raw, filename, lineno)
             continue
+        if s == "telnet server enable":
+            src = SourceRef(filename, lineno, None, raw)
+            cfg.telnet_server_enabled = Traced(True, src)
+            continue
+        if s == "undo telnet server enable":
+            src = SourceRef(filename, lineno, None, raw)
+            cfg.telnet_server_enabled = Traced(False, src)
+            continue
 
         # --- body lines: dispatch to current context ---
         if ctx_kind == "interface":
