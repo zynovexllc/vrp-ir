@@ -29,6 +29,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-ADDRESS-SET-ANY": "Address-set objects do not silently equal any (0.0.0.0/0)",
     "HRP-ENABLED": "HRP is enabled when configured",
     "FW-HRP-INCOMPLETE": "HRP enabled with heartbeat interface and remote peer configured",
+    "FW-MGMT-TELNET": "Telnet management access is disabled (cleartext protocol)",
 }
 
 
@@ -219,6 +220,18 @@ def _check_hrp_incomplete(cfg: VrpConfig) -> Iterable[Finding]:
             [cfg.hrp.source])
 
 
+def _check_mgmt_telnet(cfg: VrpConfig) -> Iterable[Finding]:
+    t = cfg.telnet_server_enabled
+    if t is None or not t.value:
+        return
+    yield Finding(
+        "FW-MGMT-TELNET", "high", "fail",
+        "Telnet server is enabled; management traffic is transmitted in cleartext "
+        "(credentials and commands visible on the wire). Disable with "
+        "'undo telnet server enable' and use SSH instead.",
+        [t.source])
+
+
 def _check_address_set_any(cfg: VrpConfig) -> Iterable[Finding]:
     """Flag an address-set member equal to 0.0.0.0/0 (mask 0).
 
@@ -240,7 +253,7 @@ def _check_address_set_any(cfg: VrpConfig) -> Iterable[Finding]:
 
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
-          _check_hrp_incomplete]
+          _check_hrp_incomplete, _check_mgmt_telnet]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
