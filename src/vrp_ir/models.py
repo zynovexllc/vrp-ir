@@ -154,6 +154,46 @@ class NatPolicyRule:
 
 
 @dataclass
+class AddressSetMember:
+    """One ``address <seq> ...`` entry inside an ``ip address-set``."""
+    seq: Traced[str]
+    source: SourceRef
+    address: Optional[Traced[str]] = None        # first value token (host/network/range start)
+    prefix_length: Optional[Traced[int]] = None  # from ``mask <n>``
+    expression: Optional[Traced[str]] = None     # full member text (range etc.), traced
+
+
+@dataclass
+class AddressSet:
+    """A named address object/group (``ip address-set <name> type ...``).
+
+    Acceptance dereferences these so a permit rule that targets an address-set is
+    judged by the set's real members instead of being mistaken for permit-any.
+    """
+    name: Traced[str]
+    source: SourceRef
+    set_type: Optional[Traced[str]] = None       # object | group
+    members: List[AddressSetMember] = field(default_factory=list)
+
+
+@dataclass
+class ServiceSetItem:
+    """One ``service <seq> ...`` entry inside an ``ip service-set``."""
+    seq: Traced[str]
+    source: SourceRef
+    expression: Optional[Traced[str]] = None     # full service text (protocol/port), traced
+
+
+@dataclass
+class ServiceSet:
+    """A named service object/group (``ip service-set <name> type ...``)."""
+    name: Traced[str]
+    source: SourceRef
+    set_type: Optional[Traced[str]] = None       # object | group
+    items: List[ServiceSetItem] = field(default_factory=list)
+
+
+@dataclass
 class Hrp:
     """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
     source: SourceRef
@@ -177,6 +217,8 @@ class VrpConfig:
     firewall_zones: List[FirewallZone] = field(default_factory=list)
     security_rules: List[SecurityRule] = field(default_factory=list)
     security_default_action: Optional[Traced[str]] = None  # policy-level `default action`
+    address_sets: List[AddressSet] = field(default_factory=list)
+    service_sets: List[ServiceSet] = field(default_factory=list)
     nat_policy_rules: List[NatPolicyRule] = field(default_factory=list)
     nat_servers: List[NatServer] = field(default_factory=list)
     hrp: Optional[Hrp] = None
