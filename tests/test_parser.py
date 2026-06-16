@@ -187,6 +187,21 @@ class TestFirewall(unittest.TestCase):
         self.assertEqual(n.inside_address.value, "10.10.10.10")
         self.assertEqual(n.inside_port.value, "443")
 
+    def test_nat_policy_rules_order_and_fields(self):
+        rules = self.cfg.nat_policy_rules
+        self.assertEqual([r.name.value for r in rules],
+                         ["trust-web-out", "trust-to-dmz-no-nat"])
+        snat = rules[0]
+        self.assertEqual([t.value for t in snat.source_zones], ["trust"])
+        self.assertEqual([t.value for t in snat.destination_zones], ["untrust"])
+        self.assertEqual([t.value for t in snat.source_addresses], ["192.168.10.0 mask 24"])
+        self.assertEqual([t.value for t in snat.destination_addresses], ["0.0.0.0 mask 0"])
+        self.assertEqual([t.value for t in snat.services], ["any"])
+        self.assertEqual(snat.action.value, "source-nat easy-ip")
+        self.assertEqual(self.cfg.to_dict()["nat_policy_rules"][0]["action"]["value"],
+                         "source-nat easy-ip")
+        self.assertEqual(rules[1].action.value, "no-nat")
+
     def test_hrp(self):
         h = self.cfg.hrp
         self.assertTrue(h.enabled.value)
@@ -256,6 +271,19 @@ class TestFirewall(unittest.TestCase):
         line = open(SAMPLE_USG, encoding="utf-8").readlines()[n.inside_port.source.line - 1]
         self.assertGreater(n.inside_port.source.col, n.global_port.source.col)
         self.assertEqual(line[n.inside_port.source.col:n.inside_port.source.col + 3], "443")
+
+    def test_nat_policy_sourceref_lines(self):
+        rules = {r.name.value: r for r in self.cfg.nat_policy_rules}
+        snat = rules["trust-web-out"]
+        no_nat = rules["trust-to-dmz-no-nat"]
+        with open(SAMPLE_USG, encoding="utf-8") as f:
+            lines = f.readlines()
+        self.assertEqual(snat.action.source.line, 59)
+        self.assertIn("action source-nat easy-ip", lines[snat.action.source.line - 1])
+        self.assertEqual(snat.action.source.col, lines[snat.action.source.line - 1].index("source-nat easy-ip"))
+        self.assertEqual(no_nat.destination_addresses[0].source.line, 64)
+        self.assertIn("10.10.10.0 mask 24",
+                      lines[no_nat.destination_addresses[0].source.line - 1])
 
 
 if __name__ == "__main__":
