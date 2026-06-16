@@ -1,8 +1,8 @@
-"""Command-line interface: ``vrp-ir parse <config> [--indent N]``.
+"""Command-line interface: ``vrp-ir parse <config>`` / ``vrp-ir audit <config>``.
 
-Outputs the parsed IR as JSON (every value carries its SourceRef), so it can
-feed downstream tooling (topology builders, acceptance checks, report
-generators) in later milestones.
+``parse`` outputs the parsed IR as JSON (every value carries its SourceRef);
+``audit`` runs security acceptance checks and prints a report (Markdown or JSON)
+in which every finding cites the exact source line it is based on.
 """
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import argparse
 import json
 import sys
 
+from .acceptance import render_markdown, run_checks
 from .parser import parse_file
 
 
@@ -24,6 +25,15 @@ def main(argv=None) -> int:
     pp.add_argument("--indent", type=int, default=2,
                     help="JSON indent (default: 2).")
 
+    pa = sub.add_parser("audit", help="Run security acceptance checks on a config.")
+    pa.add_argument("config", help="Path to a VRP/USG configuration file.")
+    pa.add_argument("--format", choices=["md", "json"], default="md",
+                    help="Report format (default: md).")
+    pa.add_argument("--lang", choices=["zh", "en"], default="zh",
+                    help="Report language (default: zh).")
+    pa.add_argument("--strict", action="store_true",
+                    help="Exit non-zero if any check fails (CI gate).")
+
     args = p.parse_args(argv)
 
     if args.command == "parse":
@@ -31,6 +41,14 @@ def main(argv=None) -> int:
         json.dump(cfg.to_dict(), sys.stdout, ensure_ascii=False, indent=args.indent)
         sys.stdout.write("\n")
         return 0
+    if args.command == "audit":
+        report = run_checks(parse_file(args.config))
+        if args.format == "json":
+            json.dump(report.to_dict(), sys.stdout, ensure_ascii=False, indent=2)
+            sys.stdout.write("\n")
+        else:
+            sys.stdout.write(render_markdown(report, lang=args.lang))
+        return 1 if (args.strict and report.result == "fail") else 0
     return 1
 
 
