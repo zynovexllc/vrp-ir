@@ -26,6 +26,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-PERMIT-SCOPE": "Permit rules are narrowed (by zone or address) on both sides",
     "FW-RULE-LOGGING": "Permit rules enable session logging",
     "FW-ZONE-IFACE-UNIQUE": "Each interface is bound to exactly one zone",
+    "FW-ADDRESS-SET-ANY": "Address-set objects do not silently equal any (0.0.0.0/0)",
     "HRP-ENABLED": "HRP is enabled when configured",
 }
 
@@ -179,8 +180,27 @@ def _check_hrp(cfg: VrpConfig) -> Iterable[Finding]:
             [cfg.hrp.source])
 
 
+def _check_address_set_any(cfg: VrpConfig) -> Iterable[Finding]:
+    """Flag an address-set member equal to 0.0.0.0/0 (mask 0).
+
+    A named object that resolves to *any* is dangerous precisely because it
+    hides a permit-any behind a friendly name: a permit rule referencing such a
+    set looks scoped but is effectively unrestricted. Only the unambiguous
+    ``mask 0`` form is flagged (no garbage facts); range members are left alone.
+    """
+    for aset in cfg.address_sets:
+        for m in aset.members:
+            if m.prefix_length is not None and m.prefix_length.value == 0:
+                yield Finding(
+                    "FW-ADDRESS-SET-ANY", "high", "fail",
+                    f"Address-set '{aset.name.value}' member {m.seq.value} is "
+                    f"0.0.0.0/0 (any); any rule referencing this set is "
+                    f"effectively unrestricted.",
+                    [m.source])
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
-          _check_zone_iface_unique, _check_hrp]
+          _check_zone_iface_unique, _check_address_set_any, _check_hrp]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
