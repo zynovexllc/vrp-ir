@@ -29,8 +29,6 @@ def main(argv=None) -> int:
     pa.add_argument("config", help="Path to a VRP/USG configuration file.")
     pa.add_argument("--format", choices=["md", "json"], default="md",
                     help="Report format (default: md).")
-    pa.add_argument("--lang", choices=["zh", "en"], default="zh",
-                    help="Report language (default: zh).")
     pa.add_argument("--strict", action="store_true",
                     help="Exit non-zero if any check fails (CI gate).")
 
@@ -47,7 +45,7 @@ def main(argv=None) -> int:
             json.dump(report.to_dict(), sys.stdout, ensure_ascii=False, indent=2)
             sys.stdout.write("\n")
         else:
-            sys.stdout.write(render_markdown(report, lang=args.lang))
+            sys.stdout.write(render_markdown(report))
         return 1 if (args.strict and report.result == "fail") else 0
     return 1
 

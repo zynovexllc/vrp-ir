@@ -13,4 +13,4 @@ __all__ = [
     "run_checks", "render_markdown", "AcceptanceReport", "Finding",
     "SourceRef", "Traced",
 ]
-__version__ = "0.4.0"
+__version__ = "0.4.1"

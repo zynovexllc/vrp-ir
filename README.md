@@ -17,10 +17,10 @@ Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its sour
 > acceptance audit** (`vrp-ir audit`) whose findings cite the exact config line.
 > Roadmap below.
 
-> 💼 **Commercial / 商用** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
+> 💼 **Commercial** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
 > security-integration **acceptance** workbench. Need customer-grade acceptance
 > reports, a readiness review, or multi-vendor coverage? See
-> [Commercial / support](#commercial--support) · 需要验收报告 / 就绪度审查?见文末。
+> [Commercial / support](#commercial--support).
 
 ## Why this exists (the gap)
 
@@ -88,16 +88,15 @@ is a small test case (intent), and every finding cites the exact config line it
 is based on — so a reviewer jumps straight to the offending line.
 
 ```bash
-vrp-ir audit examples/sample-usg-risky.cfg            # Markdown report (中文)
-vrp-ir audit examples/sample-usg.cfg --lang en        # English
-vrp-ir audit examples/sample-usg.cfg --format json    # machine-readable
+vrp-ir audit examples/sample-usg-risky.cfg            # Markdown acceptance report
+vrp-ir audit examples/sample-usg.cfg --format json    # machine-readable JSON
 vrp-ir audit examples/sample-usg-risky.cfg --strict   # exit 1 if any check fails (CI gate)
 ```
 
 ```text
-### ❌ `FW-DEFAULT-DENY` [CRITICAL] — 安全策略默认动作应为 deny(拒绝未匹配流量)
-默认动作为 permit:所有未匹配安全策略的流量被放行(permit-any)。
-**证据**:
+### ❌ `FW-DEFAULT-DENY` [CRITICAL] — Security-policy default action denies unmatched traffic
+Default action is 'permit': all traffic matching no rule is allowed (permit-any).
+**Evidence**:
 - `examples/sample-usg-risky.cfg:14` — `default action permit`
 ```
 
@@ -127,7 +126,7 @@ full rendered report at [`docs/acceptance-report-example.md`](docs/acceptance-re
   action / logging), `nat server`, `hrp` (the global OSS gap; Batfish drops VRP
   entirely). ✅
 - **v0.4 (now):** security **acceptance audit** — test-case schema
-  (`testCase ↔ intent ↔ evidenceRef`) + a bilingual (zh/en) report generator;
+  (`testCase ↔ intent ↔ evidenceRef`) + a Markdown/JSON report generator;
   `vrp-ir audit` with seed firewall checks, each citing its source line. ✅
 - **v0.4.x (next):** `nat-policy` blocks, `ip address-set` / `ip service-set`
   objects, `vsys`; more acceptance checks (NAT correctness, HRP consistency).
@@ -142,7 +141,7 @@ sign-off report). If you need:
 
 - Huawei **security-device** acceptance (USG/WAF/AntiDDoS/4A),
 - HLD/LLD → traceable acceptance test cases,
-- customer-grade, auditable acceptance reports (中文 / 等保 / 运营商),
+- customer-grade, auditable acceptance reports (incl. MLPS / carrier formats),
 
 → open an issue tagged `commercial`, or reach out about a **paid workflow
 review / design-partner pilot**.
@@ -155,38 +154,3 @@ that we parse incorrectly make the **best** issues.
 ## License
 
 [Apache-2.0](LICENSE).
-
----
-
-<a name="zh"></a>
-
-# vrp-ir(中文)
-
-**面向华为 VRP 配置的「可逐字段溯源」结构化解析器。**
-
-把离线华为 VRP 配置文件(`display current-configuration` / 保存的 `.cfg`)解析成
-结构化模型,且**每个解析出的值都带 `SourceRef`,可溯源到原始 file:line**。
-
-## 为什么做(空白)
-
-- **Batfish** 很强,但源码明确把华为 **VRP 标为 `UNSUPPORTED`**。
-- **ntc-templates** 有 ~35 个华为 `display` **show 命令**模板,但**没有**
-  `display current-configuration`(配置文件)解析。
-- **ciscoconfparse2** 偏 Cisco,且只有行号整数,不是字段级溯源。
-- 整个生态**没有**工具提供"字段 → file:line"的溯源。
-
-`vrp-ir` 正好补这个空白——**华为 VRP 配置文件 → 语义模型 + 逐字段溯源**。这正是
-验收/审计场景需要的:值不对时直接跳到原始行,而不是人肉翻配置。
-
-## 不重复造轮子
-
-`vrp-ir` 只做"VRP 配置 + 溯源"这一薄层,**复用**而非重建 `ntc-templates`
-(show 解析)/ `hier_config`(VRP diff)/ `napalm`(连真机)/ `Batfish`(多厂商分析)。
-后续拓扑/分析层将**集成**这些工具。
-
-## 商业 / 支持
-
-`vrp-ir` 是 **AegisTwin**(运营商/数据中心安全集成**验收**工作台)的开源地基。
-需要华为安全设备(USG/WAF/AntiDDoS/4A)验收、HLD/LLD → 可溯源用例、客户级可签收
-验收报告(中文/等保/运营商)?提一个 `commercial` issue,或聊一次**付费工作流评审 /
-设计伙伴试点**。
