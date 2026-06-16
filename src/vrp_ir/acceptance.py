@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List
 
-from .models import VrpConfig
+from .models import AddressSet, VrpConfig
 from .sourceref import SourceRef
 
 # Severity ranked most -> least serious.

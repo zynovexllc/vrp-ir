@@ -23,9 +23,22 @@ dependencies = []  # zero runtime dependencies by design
 [project.urls]
 Homepage = "https://github.com/zynovexllc/vrp-ir"
 Source = "https://github.com/zynovexllc/vrp-ir"
+Issues = "https://github.com/zynovexllc/vrp-ir/issues"
+Changelog = "https://github.com/zynovexllc/vrp-ir/blob/main/CHANGELOG.md"
+Releases = "https://github.com/zynovexllc/vrp-ir/releases"
 
 [project.scripts]
 vrp-ir = "vrp_ir.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+# High-signal only: pyflakes (F) catches real defects — undefined names,
+# unused imports — without imposing style churn. Formatting is intentionally
+# left loose so contributed/generated PRs are not blocked on cosmetics.
+select = ["F"]
