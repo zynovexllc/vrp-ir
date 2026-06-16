@@ -1,5 +1,10 @@
 # vrp-ir
 
+[![Tests](https://github.com/zynovexllc/vrp-ir/actions/workflows/tests.yml/badge.svg)](https://github.com/zynovexllc/vrp-ir/actions/workflows/tests.yml)
+[![Release](https://img.shields.io/github/v/release/zynovexllc/vrp-ir)](https://github.com/zynovexllc/vrp-ir/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+
 **Source-traceable structured IR for Huawei VRP configurations.**
 
 `vrp-ir` parses an offline Huawei VRP configuration file (`display

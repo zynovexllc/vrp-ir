@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Commercial / acceptance services (AegisTwin)
+    url: https://github.com/zynovexllc/vrp-ir#commercial--support
+    about: "Need customer-grade acceptance reports, a readiness review, or multi-vendor coverage? Start here."
+  - name: Security vulnerability (private)
+    url: https://github.com/zynovexllc/vrp-ir/security/advisories/new
+    about: "Report a security issue privately via GitHub Security Advisories — do not open a public issue."

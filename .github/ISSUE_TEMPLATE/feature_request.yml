@@ -1,0 +1,28 @@
+name: "Feature request"
+description: "A new parsed construct, a new audit check, or another enhancement."
+title: "[feat] <short description>"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What acceptance or audit need is not met today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed construct or check
+      description: |
+        For a parser construct, give the VRP/USG syntax. For an audit check,
+        give the intent and what evidence line it should cite.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Out of scope / notes
+      description: Anything explicitly not included, or prior art (ntc-templates, Batfish, etc.).
+    validations:
+      required: false
