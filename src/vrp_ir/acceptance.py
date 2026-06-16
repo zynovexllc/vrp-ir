@@ -30,6 +30,7 @@ CHECKS_META: Dict[str, str] = {
     "HRP-ENABLED": "HRP is enabled when configured",
     "FW-HRP-INCOMPLETE": "HRP enabled with heartbeat interface and remote peer configured",
     "FW-MGMT-TELNET": "Telnet management access is disabled (cleartext protocol)",
+    "FW-MGMT-HTTP": "HTTP web management is disabled (cleartext protocol; use HTTPS)",
 }
 
 
@@ -251,9 +252,21 @@ def _check_address_set_any(cfg: VrpConfig) -> Iterable[Finding]:
                     [m.source])
 
 
+def _check_mgmt_http(cfg: VrpConfig) -> Iterable[Finding]:
+    h = cfg.http_server_enabled
+    if h is None or not h.value:
+        return
+    yield Finding(
+        "FW-MGMT-HTTP", "high", "fail",
+        "HTTP server is enabled; web management traffic is transmitted in cleartext "
+        "(credentials and commands visible on the wire). Disable with "
+        "'undo http server enable' and use HTTPS instead.",
+        [h.source])
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
-          _check_hrp_incomplete, _check_mgmt_telnet]
+          _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:

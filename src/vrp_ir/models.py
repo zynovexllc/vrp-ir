@@ -223,6 +223,7 @@ class VrpConfig:
     nat_servers: List[NatServer] = field(default_factory=list)
     hrp: Optional[Hrp] = None
     telnet_server_enabled: Optional[Traced[bool]] = None
+    http_server_enabled: Optional[Traced[bool]] = None
 
     def to_dict(self) -> dict:
         """JSON-serialisable view; keeps SourceRef alongside each traced value."""
