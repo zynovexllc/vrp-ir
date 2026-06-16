@@ -34,7 +34,7 @@ class TestAcceptance(unittest.TestCase):
         r = run_checks(parse_file(RISKY))
         scope = [x for x in r.findings if x.check_id == "FW-PERMIT-SCOPE"]
         self.assertEqual(len(scope), 1)            # any-to-any only, not web-in
-        self.assertIn("any-to-any", scope[0].detail["en"])
+        self.assertIn("any-to-any", scope[0].detail)
 
     def test_explicit_any_permit_flagged(self):
         # `source-zone any` is NON-empty yet means "all zones": must still flag.
@@ -69,9 +69,9 @@ class TestAcceptance(unittest.TestCase):
         self.assertEqual([x for x in r.findings if x.check_id == "FW-ZONE-IFACE-UNIQUE"], [])
 
     def test_empty_report_renders_na_note(self):
-        md = render_markdown(run_checks(parse_text("sysname X\n")), "zh")
-        self.assertIn("无适用", md)
-        self.assertNotIn("通过", md)   # must not claim PASS when nothing was checked
+        md = render_markdown(run_checks(parse_text("sysname X\n")))
+        self.assertIn("No applicable", md)
+        self.assertNotIn("PASS", md)   # must not claim PASS when nothing was checked
 
     def test_clean_sample_warns_not_fails(self):
         r = run_checks(parse_file(CLEAN))
@@ -89,13 +89,11 @@ class TestAcceptance(unittest.TestCase):
         hrp = next(x for x in r.findings if x.check_id == "HRP-ENABLED")
         self.assertEqual(hrp.status, "warn")
 
-    def test_render_markdown_bilingual_with_evidence(self):
-        r = run_checks(parse_file(RISKY))
-        zh, en = render_markdown(r, "zh"), render_markdown(r, "en")
-        self.assertIn("安全验收报告", zh)
-        self.assertIn("Security Acceptance Report", en)
-        self.assertIn("FW-DEFAULT-DENY", zh)
-        self.assertIn("default action permit", zh)   # raw evidence line rendered
+    def test_render_markdown_with_evidence(self):
+        md = render_markdown(run_checks(parse_file(RISKY)))
+        self.assertIn("Security Acceptance Report", md)
+        self.assertIn("FW-DEFAULT-DENY", md)
+        self.assertIn("default action permit", md)   # raw evidence line rendered
 
     def test_to_dict_json_roundtrip(self):
         r = run_checks(parse_file(RISKY))
