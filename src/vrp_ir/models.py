@@ -207,6 +207,14 @@ class UserInterface:
 
 
 @dataclass
+class LocalUser:
+    """One ``local-user NAME service-type TYPE ...`` entry inside the ``aaa`` block."""
+    name: Traced[str]
+    service_types: List[Traced[str]]
+    source: SourceRef
+
+
+@dataclass
 class Hrp:
     """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
     source: SourceRef
@@ -236,6 +244,7 @@ class VrpConfig:
     nat_servers: List[NatServer] = field(default_factory=list)
     hrp: Optional[Hrp] = None
     user_interfaces: List[UserInterface] = field(default_factory=list)
+    local_users: List[LocalUser] = field(default_factory=list)
     telnet_server_enabled: Optional[Traced[bool]] = None
     http_server_enabled: Optional[Traced[bool]] = None
     ssh_server_ciphers: List[Traced[str]] = field(default_factory=list)

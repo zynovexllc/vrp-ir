@@ -34,6 +34,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-MGMT-VTY-TELNET": "VTY management lines do not accept Telnet (cleartext protocol)",
     "FW-MGMT-VTY-NO-ACL": "VTY management lines restrict inbound source with an ACL",
     "FW-SSH-WEAK-CIPHER": "SSH server does not use weak (CBC-mode / DES) ciphers",
+    "FW-AAA-LOCAL-USER-TELNET": "Local AAA users are not granted the Telnet service type (cleartext)",
 }
 
 
@@ -315,10 +316,24 @@ def _check_ssh_weak_cipher(cfg: VrpConfig) -> Iterable[Finding]:
         [t.source for t in weak])
 
 
+def _check_aaa_local_user_telnet(cfg: VrpConfig) -> Iterable[Finding]:
+    for user in cfg.local_users:
+        for svc in user.service_types:
+            if svc.value.lower() == "telnet":
+                yield Finding(
+                    "FW-AAA-LOCAL-USER-TELNET", "medium", "warn",
+                    f"Local user '{user.name.value}' is granted the Telnet service type; "
+                    f"Telnet transmits credentials in cleartext. "
+                    f"Remove 'telnet' from the service-type list.",
+                    [svc.source])
+                break
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
           _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
-          _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher]
+          _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher,
+          _check_aaa_local_user_telnet]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
