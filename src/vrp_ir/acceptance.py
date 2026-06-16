@@ -33,6 +33,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-MGMT-HTTP": "HTTP web management is disabled (cleartext protocol; use HTTPS)",
     "FW-MGMT-VTY-TELNET": "VTY management lines do not accept Telnet (cleartext protocol)",
     "FW-MGMT-VTY-NO-ACL": "VTY management lines restrict inbound source with an ACL",
+    "FW-SSH-WEAK-CIPHER": "SSH server does not use weak (CBC-mode / DES) ciphers",
 }
 
 
@@ -294,10 +295,30 @@ def _check_vty_no_acl(cfg: VrpConfig) -> Iterable[Finding]:
                 [ui.source])
 
 
+def _is_weak_cipher(name: str) -> bool:
+    lo = name.lower()
+    return "cbc" in lo or lo.startswith("3des") or lo == "des"
+
+
+def _check_ssh_weak_cipher(cfg: VrpConfig) -> Iterable[Finding]:
+    if not cfg.ssh_server_ciphers:
+        return
+    weak = [t for t in cfg.ssh_server_ciphers if _is_weak_cipher(t.value)]
+    if not weak:
+        return
+    names = ", ".join(t.value for t in weak)
+    yield Finding(
+        "FW-SSH-WEAK-CIPHER", "medium", "warn",
+        f"SSH server is configured with weak cipher(s): {names}. "
+        f"CBC-mode and DES ciphers are cryptographically weak; "
+        f"use CTR or GCM mode ciphers instead.",
+        [t.source for t in weak])
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
           _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
-          _check_vty_telnet, _check_vty_no_acl]
+          _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:

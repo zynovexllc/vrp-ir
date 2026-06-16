@@ -238,6 +238,7 @@ class VrpConfig:
     user_interfaces: List[UserInterface] = field(default_factory=list)
     telnet_server_enabled: Optional[Traced[bool]] = None
     http_server_enabled: Optional[Traced[bool]] = None
+    ssh_server_ciphers: List[Traced[str]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """JSON-serialisable view; keeps SourceRef alongside each traced value."""
