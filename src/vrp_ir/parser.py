@@ -13,7 +13,7 @@ from typing import List, Optional
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, NatPolicyRule, NatServer,
                      SecurityRule, ServiceSet, ServiceSetItem, StaticRoute,
-                     Vlan, VlanRange, Vrf, VrpConfig)
+                     UserInterface, Vlan, VlanRange, Vrf, VrpConfig)
 from .sourceref import SourceRef, Traced
 
 
@@ -82,6 +82,12 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
 
         # --- section openers (match regardless of leading whitespace) ---
+        # For user-interface body: dispatch before section-opener checks so that
+        # sub-commands like `acl 2000 inbound` are not mistaken for new contexts.
+        if ctx_kind == "userif":
+            _user_interface_line(ctx_obj, s, raw, filename, lineno)
+            continue
+
         if s.startswith("interface "):
             name = s[len("interface "):].strip()
             src = SourceRef(filename, lineno, _col(raw, name), raw)
@@ -129,6 +135,10 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         if s.startswith("ip service-set "):
             ctx_obj = _open_service_set(cfg, s, raw, filename, lineno)
             ctx_kind = "svcset"
+            continue
+        if s.startswith("user-interface "):
+            ctx_obj = _open_user_interface(cfg, s, raw, filename, lineno)
+            ctx_kind = "userif"
             continue
 
         # --- one-line globals ---
@@ -181,6 +191,8 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             _address_set_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "svcset":
             _service_set_line(ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "userif":
+            _user_interface_line(ctx_obj, s, raw, filename, lineno)
 
     return cfg
 
@@ -532,6 +544,50 @@ def _parse_hrp(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
                 hrp.peer = Traced(toks[i + 1], SourceRef(fn, ln, _col(raw, toks[i + 1]), raw))
     else:
         hrp.directives.append(Traced(s, src))
+
+
+def _open_user_interface(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> UserInterface:
+    rest = s[len("user-interface "):].split()
+    src = SourceRef(fn, ln, None, raw)
+    if not rest:
+        ui = UserInterface(kind=Traced("", src), first=Traced(0, src), source=src)
+        cfg.user_interfaces.append(ui)
+        return ui
+    kind_tok = rest[0]  # "con" or "vty"
+    kind_src = SourceRef(fn, ln, _col(raw, kind_tok), raw)
+    first_val = 0
+    first_src = src
+    last_val = None
+    if len(rest) >= 2 and rest[1].isdigit():
+        first_val = int(rest[1])
+        first_src = SourceRef(fn, ln, _col(raw, rest[1]), raw)
+    if len(rest) >= 3 and rest[2].isdigit():
+        last_val = Traced(int(rest[2]), SourceRef(fn, ln, _col(raw, rest[2]), raw))
+    ui = UserInterface(
+        kind=Traced(kind_tok, kind_src),
+        first=Traced(first_val, first_src),
+        source=src,
+        last=last_val,
+    )
+    cfg.user_interfaces.append(ui)
+    return ui
+
+
+def _user_interface_line(ui: UserInterface, s: str, raw: str, fn: str, ln: int) -> None:
+    if s.startswith("protocol inbound "):
+        v = s[len("protocol inbound "):].strip()
+        ui.protocol_inbound.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+    elif s.startswith("acl ") and "inbound" in s:
+        toks = s[len("acl "):].split()
+        acl_id = toks[0] if toks else ""
+        ui.acl_inbound = Traced(acl_id, SourceRef(fn, ln, _col(raw, acl_id), raw))
+    elif s.startswith("authentication-mode "):
+        v = s[len("authentication-mode "):].strip()
+        ui.authentication_mode = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+    elif s.startswith("user privilege level "):
+        v = s[len("user privilege level "):].strip()
+        if v.isdigit():
+            ui.privilege_level = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
 
 
 def parse_file(path: str) -> VrpConfig:
