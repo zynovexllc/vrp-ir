@@ -28,6 +28,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-ZONE-IFACE-UNIQUE": "Each interface is bound to exactly one zone",
     "FW-ADDRESS-SET-ANY": "Address-set objects do not silently equal any (0.0.0.0/0)",
     "HRP-ENABLED": "HRP is enabled when configured",
+    "FW-HRP-INCOMPLETE": "HRP enabled with heartbeat interface and remote peer configured",
 }
 
 
@@ -205,6 +206,19 @@ def _check_hrp(cfg: VrpConfig) -> Iterable[Finding]:
             [cfg.hrp.source])
 
 
+def _check_hrp_incomplete(cfg: VrpConfig) -> Iterable[Finding]:
+    if cfg.hrp is None:
+        return
+    if not cfg.hrp.enabled.value:
+        return
+    if cfg.hrp.heartbeat_interface is None or cfg.hrp.peer is None:
+        yield Finding(
+            "FW-HRP-INCOMPLETE", "medium", "warn",
+            "HRP is enabled but heartbeat interface or remote peer is not "
+            "configured; the HA pair will not sync.",
+            [cfg.hrp.source])
+
+
 def _check_address_set_any(cfg: VrpConfig) -> Iterable[Finding]:
     """Flag an address-set member equal to 0.0.0.0/0 (mask 0).
 
@@ -225,7 +239,8 @@ def _check_address_set_any(cfg: VrpConfig) -> Iterable[Finding]:
 
 
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
-          _check_zone_iface_unique, _check_address_set_any, _check_hrp]
+          _check_zone_iface_unique, _check_address_set_any, _check_hrp,
+          _check_hrp_incomplete]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
