@@ -17,6 +17,11 @@ Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its sour
 > acceptance audit** (`vrp-ir audit`) whose findings cite the exact config line.
 > Roadmap below.
 
+> 💼 **Commercial / 商用** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
+> security-integration **acceptance** workbench. Need customer-grade acceptance
+> reports, a readiness review, or multi-vendor coverage? See
+> [Commercial / support](#commercial--support) · 需要验收报告 / 就绪度审查?见文末。
+
 ## Why this exists (the gap)
 
 The network-automation ecosystem is rich, but a specific combination is missing:
