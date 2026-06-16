@@ -32,9 +32,46 @@ class TestAcceptance(unittest.TestCase):
 
     def test_only_unscoped_permit_rule_flagged(self):
         r = run_checks(parse_file(RISKY))
-        scope = [x for x in r.findings if x.check_id == "FW-RULE-ZONE-SCOPE"]
+        scope = [x for x in r.findings if x.check_id == "FW-PERMIT-SCOPE"]
         self.assertEqual(len(scope), 1)            # any-to-any only, not web-in
         self.assertIn("any-to-any", scope[0].detail["en"])
+
+    def test_explicit_any_permit_flagged(self):
+        # `source-zone any` is NON-empty yet means "all zones": must still flag.
+        cfg = parse_text(
+            "security-policy\n rule name allow-any\n  source-zone any\n"
+            "  destination-zone any\n  action permit\n#\n")
+        f = next(x for x in run_checks(cfg).findings if x.check_id == "FW-PERMIT-SCOPE")
+        self.assertEqual((f.status, f.severity), ("fail", "high"))
+
+    def test_address_only_permit_not_flagged(self):
+        # Constrained by address (no zone) is NOT permit-any -> no FW-PERMIT-SCOPE.
+        cfg = parse_text(
+            "security-policy\n rule name addr-scoped\n"
+            "  source-address 192.168.1.0 mask 24\n"
+            "  destination-address 10.0.0.5 mask 32\n"
+            "  action permit\n  session logging\n#\n")
+        r = run_checks(cfg)
+        self.assertEqual([x for x in r.findings if x.check_id == "FW-PERMIT-SCOPE"], [])
+
+    def test_one_side_open_permit_warns(self):
+        cfg = parse_text(
+            "security-policy\n rule name half-open\n  source-zone trust\n"
+            "  action permit\n#\n")
+        f = next(x for x in run_checks(cfg).findings if x.check_id == "FW-PERMIT-SCOPE")
+        self.assertEqual((f.status, f.severity), ("warn", "medium"))
+
+    def test_zone_iface_same_zone_repeat_not_flagged(self):
+        cfg = parse_text(
+            "firewall zone trust\n add interface GigabitEthernet0/0/1\n"
+            " add interface GigabitEthernet0/0/1\n#\n")
+        r = run_checks(cfg)
+        self.assertEqual([x for x in r.findings if x.check_id == "FW-ZONE-IFACE-UNIQUE"], [])
+
+    def test_empty_report_renders_na_note(self):
+        md = render_markdown(run_checks(parse_text("sysname X\n")), "zh")
+        self.assertIn("无适用", md)
+        self.assertNotIn("通过", md)   # must not claim PASS when nothing was checked
 
     def test_clean_sample_warns_not_fails(self):
         r = run_checks(parse_file(CLEAN))

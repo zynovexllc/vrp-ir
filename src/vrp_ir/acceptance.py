@@ -25,9 +25,9 @@ CHECKS_META: Dict[str, Dict[str, str]] = {
     "FW-DEFAULT-DENY": {
         "zh": "安全策略默认动作应为 deny(拒绝未匹配流量)",
         "en": "Security-policy default action denies unmatched traffic"},
-    "FW-RULE-ZONE-SCOPE": {
-        "zh": "permit 规则应有源/目的安全区域约束",
-        "en": "Permit rules are scoped by source/destination zone"},
+    "FW-PERMIT-SCOPE": {
+        "zh": "permit 规则的源与目的应被区域或地址收敛",
+        "en": "Permit rules are narrowed (by zone or address) on both sides"},
     "FW-RULE-LOGGING": {
         "zh": "permit 规则应开启会话日志(session logging)",
         "en": "Permit rules enable session logging"},
@@ -113,22 +113,41 @@ def _check_default_deny(cfg: VrpConfig) -> Iterable[Finding]:
             [da.source] if da is not None else [])
 
 
-def _check_rule_zone_scope(cfg: VrpConfig) -> Iterable[Finding]:
+def _narrowed(zones, addresses) -> bool:
+    """A side is narrowed if it has a non-``any`` zone OR a non-``any`` address.
+
+    Using zone-presence alone is wrong both ways: an explicit ``source-zone any``
+    would look "scoped" (missing a permit-any), and an address-only rule would
+    look "unscoped" (false positive). Either an effective zone or an effective
+    address constrains the side.
+    """
+    zoned = any(z.value.lower() != "any" for z in zones)
+    addressed = any(a.value.lower().split()[0] != "any" for a in addresses)
+    return zoned or addressed
+
+
+def _check_permit_scope(cfg: VrpConfig) -> Iterable[Finding]:
     for r in cfg.security_rules:
         if not (r.action and r.action.value == "permit"):
             continue
-        missing = []
-        if not r.source_zones:
-            missing.append("source-zone")
-        if not r.destination_zones:
-            missing.append("destination-zone")
-        if missing:
-            m = ", ".join(missing)
+        src_ok = _narrowed(r.source_zones, r.source_addresses)
+        dst_ok = _narrowed(r.destination_zones, r.destination_addresses)
+        if src_ok and dst_ok:
+            continue
+        if not src_ok and not dst_ok:
             yield Finding(
-                "FW-RULE-ZONE-SCOPE", "high", "fail",
-                {"zh": f"规则 '{r.name.value}' 放行流量但缺少 {m},匹配所有区域。",
-                 "en": f"Rule '{r.name.value}' permits traffic but is missing "
-                       f"{m} (matches all zones)."},
+                "FW-PERMIT-SCOPE", "high", "fail",
+                {"zh": f"规则 '{r.name.value}' 放行流量,但源与目的均未被区域或地址收敛(permit-any)。",
+                 "en": f"Rule '{r.name.value}' permits traffic with neither source "
+                       f"nor destination narrowed by zone or address (permit-any)."},
+                [r.source])
+        else:
+            zh_side, en_side = ("源", "source") if not src_ok else ("目的", "destination")
+            yield Finding(
+                "FW-PERMIT-SCOPE", "medium", "warn",
+                {"zh": f"规则 '{r.name.value}' 放行流量,但{zh_side}侧未被区域或地址收敛(匹配所有{zh_side})。",
+                 "en": f"Rule '{r.name.value}' permits traffic but the {en_side} side "
+                       f"is not narrowed by zone or address."},
                 [r.source])
 
 
@@ -144,18 +163,20 @@ def _check_rule_logging(cfg: VrpConfig) -> Iterable[Finding]:
 
 
 def _check_zone_iface_unique(cfg: VrpConfig) -> Iterable[Finding]:
-    seen: Dict[str, List] = {}
+    # interface -> {zone_name: interface-binding SourceRef} (dedupe repeats in
+    # the same zone, so only genuinely conflicting zones are flagged)
+    seen: Dict[str, Dict[str, SourceRef]] = {}
     for z in cfg.firewall_zones:
         for itf in z.interfaces:
-            seen.setdefault(itf.value, []).append((z, itf))
-    for name, binds in seen.items():
-        if len(binds) > 1:
-            zones = ", ".join(z.name.value for z, _ in binds)
+            seen.setdefault(itf.value, {}).setdefault(z.name.value, itf.source)
+    for name, zone_refs in seen.items():
+        if len(zone_refs) > 1:
+            zones = ", ".join(zone_refs)
             yield Finding(
                 "FW-ZONE-IFACE-UNIQUE", "high", "fail",
-                {"zh": f"接口 {name} 被绑定到 {len(binds)} 个区域:{zones}。",
-                 "en": f"Interface {name} is bound to {len(binds)} zones: {zones}."},
-                [itf.source for _, itf in binds])
+                {"zh": f"接口 {name} 被绑定到 {len(zone_refs)} 个区域:{zones}。",
+                 "en": f"Interface {name} is bound to {len(zone_refs)} zones: {zones}."},
+                list(zone_refs.values()))
 
 
 def _check_hrp(cfg: VrpConfig) -> Iterable[Finding]:
@@ -175,7 +196,7 @@ def _check_hrp(cfg: VrpConfig) -> Iterable[Finding]:
             [cfg.hrp.source])
 
 
-CHECKS = [_check_default_deny, _check_rule_zone_scope, _check_rule_logging,
+CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_hrp]
 
 
@@ -193,10 +214,12 @@ _STATUS_ICON = {"pass": "✅", "warn": "⚠️", "fail": "❌"}
 _L = {
     "zh": {"title": "安全验收报告", "config": "配置文件", "result": "结论",
            "summary": "汇总", "findings": "检查项", "evidence": "证据",
-           "pass": "通过", "warn": "告警", "fail": "未通过"},
+           "pass": "通过", "warn": "告警", "fail": "未通过",
+           "na": "无适用的安全检查项(该配置未包含安全策略 / 区域 / HRP)。"},
     "en": {"title": "Security Acceptance Report", "config": "Config",
            "result": "Result", "summary": "Summary", "findings": "Checks",
-           "evidence": "Evidence", "pass": "PASS", "warn": "WARN", "fail": "FAIL"},
+           "evidence": "Evidence", "pass": "PASS", "warn": "WARN", "fail": "FAIL",
+           "na": "No applicable security checks (no security-policy / zones / HRP)."},
 }
 
 
@@ -208,6 +231,11 @@ def render_markdown(report: AcceptanceReport, lang: str = "zh") -> str:
         f"# {L['title']}",
         "",
         f"- **{L['config']}**: `{report.source_file}`",
+    ]
+    if not report.findings:
+        out += ["", f"_{L['na']}_", ""]
+        return "\n".join(out) + "\n"
+    out += [
         f"- **{L['result']}**: {_STATUS_ICON[report.result]} {L[report.result]}",
         f"- **{L['summary']}**: {c['fail']} {L['fail']} · {c['warn']} {L['warn']} "
         f"· {c['pass']} {L['pass']}",

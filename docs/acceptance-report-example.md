@@ -14,9 +14,9 @@
 **证据**:
 - `examples/sample-usg-risky.cfg:14` — `default action permit`
 
-### ❌ `FW-RULE-ZONE-SCOPE` [HIGH] — permit 规则应有源/目的安全区域约束
+### ❌ `FW-PERMIT-SCOPE` [HIGH] — permit 规则的源与目的应被区域或地址收敛
 
-规则 'any-to-any' 放行流量但缺少 source-zone, destination-zone,匹配所有区域。
+规则 'any-to-any' 放行流量,但源与目的均未被区域或地址收敛(permit-any)。
 
 **证据**:
 - `examples/sample-usg-risky.cfg:15` — `rule name any-to-any`
