@@ -1,0 +1,51 @@
+name: "Config parsing issue"
+description: "A Huawei VRP/USG config snippet that vrp-ir parses incorrectly (the most valuable report)."
+title: "[parse] <short description>"
+labels: ["parsing"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! A real (but **de-identified**) snippet we parse wrong is the single
+        most useful contribution. Please scrub real IPs, hostnames, keys and
+        community strings before pasting — synthetic values are perfect.
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Config snippet (de-identified)
+      description: The smallest VRP/USG snippet that reproduces the problem.
+      render: text
+      placeholder: |
+        interface GigabitEthernet0/0/1
+         ip address 10.0.0.1 255.255.255.0
+        #
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected parse / behavior
+      description: What should the IR (or `vrp-ir audit` finding) contain?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual parse / behavior
+      description: What does `vrp-ir parse` / `vrp-ir audit` produce instead? Paste the relevant output.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: vrp-ir version
+      placeholder: "0.6.0"
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirmation
+      options:
+        - label: The snippet contains no real production data (it is synthetic or de-identified).
+          required: true
