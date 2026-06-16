@@ -103,25 +103,50 @@ def _check_default_deny(cfg: VrpConfig) -> Iterable[Finding]:
             [da.source] if da is not None else [])
 
 
-def _narrowed(zones, addresses) -> bool:
+def _addr_set_resolves_to_any(name: str, addr_sets_by_name: Dict[str, "AddressSet"]) -> bool:
+    """Return True when the named address-set contains a 0.0.0.0/0 member (prefix_length 0)."""
+    aset = addr_sets_by_name.get(name)
+    if aset is None:
+        return False
+    return any(m.prefix_length is not None and m.prefix_length.value == 0
+               for m in aset.members)
+
+
+def _narrowed(zones, addresses, addr_sets_by_name: Dict[str, "AddressSet"] = None) -> bool:
     """A side is narrowed if it has a non-``any`` zone OR a non-``any`` address.
 
     Using zone-presence alone is wrong both ways: an explicit ``source-zone any``
     would look "scoped" (missing a permit-any), and an address-only rule would
     look "unscoped" (false positive). Either an effective zone or an effective
     address constrains the side.
+
+    When *addr_sets_by_name* is provided, an ``address-set NAME`` reference is
+    dereferenced: if the named set has a member with prefix_length 0 (0.0.0.0/0)
+    it is treated as ``any`` and does NOT count as narrowing.
     """
     zoned = any(z.value.lower() != "any" for z in zones)
-    addressed = any(a.value.lower().split()[0] != "any" for a in addresses)
+
+    def _is_narrowing_addr(a) -> bool:
+        val = a.value.lower()
+        parts = val.split()
+        if parts[0] == "any":
+            return False
+        if parts[0] == "address-set" and addr_sets_by_name is not None and len(parts) >= 2:
+            set_name = a.value.split(None, 1)[1]  # preserve original case for lookup
+            return not _addr_set_resolves_to_any(set_name, addr_sets_by_name)
+        return True
+
+    addressed = any(_is_narrowing_addr(a) for a in addresses)
     return zoned or addressed
 
 
 def _check_permit_scope(cfg: VrpConfig) -> Iterable[Finding]:
+    addr_sets_by_name = {aset.name.value: aset for aset in cfg.address_sets}
     for r in cfg.security_rules:
         if not (r.action and r.action.value == "permit"):
             continue
-        src_ok = _narrowed(r.source_zones, r.source_addresses)
-        dst_ok = _narrowed(r.destination_zones, r.destination_addresses)
+        src_ok = _narrowed(r.source_zones, r.source_addresses, addr_sets_by_name)
+        dst_ok = _narrowed(r.destination_zones, r.destination_addresses, addr_sets_by_name)
         if src_ok and dst_ok:
             continue
         if not src_ok and not dst_ok:
