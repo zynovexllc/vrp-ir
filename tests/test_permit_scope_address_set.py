@@ -8,11 +8,6 @@ import unittest
 from vrp_ir import parse_text, run_checks
 
 
-def _scope_findings(text: str):
-    return [f for f in run_checks(parse_text(text)).findings
-            if f.check_id == "FW-PERMIT-SCOPE"]
-
-
 class TestPermitScopeAddressSetDeref(unittest.TestCase):
 
     def test_any_resolving_dst_address_set_flags_rule(self):
@@ -28,8 +23,6 @@ class TestPermitScopeAddressSetDeref(unittest.TestCase):
             "  action permit\n"
             "#\n"
         )
-        findings = _scope_findings(cfg.source_file)
-        # Must find at least one finding for this rule
         findings = [f for f in run_checks(cfg).findings if f.check_id == "FW-PERMIT-SCOPE"]
         self.assertEqual(len(findings), 1)
         self.assertIn("hidden-any", findings[0].detail)
