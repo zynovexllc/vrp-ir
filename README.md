@@ -1,9 +1,9 @@
 # vrp-ir
 
 [![Tests](https://github.com/zynovexllc/vrp-ir/actions/workflows/tests.yml/badge.svg)](https://github.com/zynovexllc/vrp-ir/actions/workflows/tests.yml)
-[![Release](https://img.shields.io/github/v/release/zynovexllc/vrp-ir)](https://github.com/zynovexllc/vrp-ir/releases)
+[![PyPI](https://img.shields.io/pypi/v/vrp-ir.svg)](https://pypi.org/project/vrp-ir/)
+[![Python](https://img.shields.io/pypi/pyversions/vrp-ir.svg)](https://pypi.org/project/vrp-ir/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 
 **Source-traceable structured IR for Huawei VRP configurations.**
 
@@ -49,7 +49,7 @@ a value looks wrong, jump straight to the line, don't grep the raw config.
 ## Install
 
 ```bash
-pip install vrp-ir            # once published to PyPI
+pip install vrp-ir
 # or, from source:
 pip install -e .
 ```
