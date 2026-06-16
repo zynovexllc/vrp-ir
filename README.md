@@ -11,11 +11,12 @@ it came from.
 Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its source line
 ```
 
-> Status: **v0.4 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
+> Status: **v0.5 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
 > ACL, static routes) **and USG firewall** (`firewall zone`, `security-policy`,
-> `nat server`, `hrp`) parsed with full source provenance, plus a **security
-> acceptance audit** (`vrp-ir audit`) whose findings cite the exact config line.
-> Roadmap below.
+> `nat-policy`, `nat server`, `ip address-set` / `ip service-set` objects, `hrp`,
+> telnet/http management switches) parsed with full source provenance, plus a
+> **security acceptance audit** (`vrp-ir audit`, 9 checks) whose findings cite the
+> exact config line. Roadmap below.
 
 > 💼 **Commercial** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
 > security-integration **acceptance** workbench. Need customer-grade acceptance
@@ -51,7 +52,7 @@ pip install -e .
 
 ```bash
 vrp-ir parse examples/sample-vrp.cfg     # routing / switching
-vrp-ir parse examples/sample-usg.cfg     # USG firewall (zones / policy / nat / hrp)
+vrp-ir parse examples/sample-usg.cfg     # USG firewall (zones / policy / nat-policy / objects / hrp)
 ```
 
 ```jsonc
@@ -81,7 +82,7 @@ print(ip.address.value, ip.prefix_length.value) # 10.10.10.1 24
 print(ip.address.source)                        # examples/sample-vrp.cfg:11  ← provenance
 ```
 
-## Security acceptance audit (v0.4)
+## Security acceptance audit (v0.5)
 
 Turn the source-traceable IR into a **security acceptance report**: each check
 is a small test case (intent), and every finding cites the exact config line it
@@ -100,9 +101,13 @@ Default action is 'permit': all traffic matching no rule is allowed (permit-any)
 - `examples/sample-usg-risky.cfg:14` — `default action permit`
 ```
 
-Seed checks: policy default-deny (permit-any), permit rules missing zone scope,
-permit rules without session logging, one-interface-per-zone, HRP enabled. See a
-full rendered report at [`docs/acceptance-report-example.md`](docs/acceptance-report-example.md).
+Checks (9): policy default-deny (permit-any); permit-scope (rules not narrowed by
+zone/address, **dereferencing `address-set` references** so an object that resolves
+to `0.0.0.0/0` is still flagged); permit rules without session logging;
+one-interface-per-zone; `address-set` equal to any; HRP enabled; HRP enabled but
+heartbeat interface/peer incomplete; Telnet management (cleartext); HTTP management
+(cleartext). See a full rendered report at
+[`docs/acceptance-report-example.md`](docs/acceptance-report-example.md).
 
 ## Design principles
 
@@ -125,11 +130,15 @@ full rendered report at [`docs/acceptance-report-example.md`](docs/acceptance-re
   `security-policy` (`rule name` with zones / addresses / services / profiles /
   action / logging), `nat server`, `hrp` (the global OSS gap; Batfish drops VRP
   entirely). ✅
-- **v0.4 (now):** security **acceptance audit** — test-case schema
+- **v0.4:** security **acceptance audit** — test-case schema
   (`testCase ↔ intent ↔ evidenceRef`) + a Markdown/JSON report generator;
   `vrp-ir audit` with seed firewall checks, each citing its source line. ✅
-- **v0.4.x (next):** `nat-policy` blocks, `ip address-set` / `ip service-set`
-  objects, `vsys`; more acceptance checks (NAT correctness, HRP consistency).
+- **v0.5 (now):** `nat-policy` blocks, `ip address-set` / `ip service-set`
+  objects, telnet/http management switches; audit grows to **9 checks** —
+  `address-set` dereference in permit-scope, `address-set`-equals-any, HRP
+  consistency, and cleartext management (Telnet / HTTP). ✅
+- **v0.5.x (next):** more management-plane baselines (SNMP community, AAA / local
+  users, NTP / Syslog presence), NAT correctness, `vsys`.
 - Later: Huawei security-device coverage (USG / WAF / AntiDDoS / 4A).
 
 ## Commercial / support
