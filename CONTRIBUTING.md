@@ -11,10 +11,24 @@ Please **de-identify** (scrub IPs, hostnames, secrets) before sharing.
 
 ```bash
 pip install -e .
+# run the whole suite:
 PYTHONPATH=src python3 -m unittest discover -s tests -v
+# run a single module / case:
+PYTHONPATH=src python3 -m unittest tests.test_acceptance
+PYTHONPATH=src python3 -m unittest tests.test_acceptance.TestAcceptance.test_risky_overall_fail_counts
 ```
 
 No runtime dependencies; tests use the stdlib `unittest`.
+
+**Lint.** CI runs `ruff check` with a deliberately small rule set (pyflakes `F`:
+undefined names, unused imports). Style/formatting is **not** enforced, so you
+won't be blocked on cosmetics — but keep new code readable and within ~100 columns.
+
+**Good first issues.** Look for the
+[`good first issue`](https://github.com/zynovexllc/vrp-ir/labels/good%20first%20issue)
+and [`parsing`](https://github.com/zynovexllc/vrp-ir/labels/parsing) labels. A
+real (de-identified) config snippet we mis-parse is the easiest high-value start —
+open a *Config parsing issue* from the issue templates.
 
 ## Adding a parsed construct
 
@@ -27,6 +41,20 @@ Every new construct must come with:
 
 See `docs/spec-v0.1.md` for the data model and parsing rules.
 
+## Adding an audit check
+
+Acceptance checks live in `src/vrp_ir/acceptance.py`. A good check:
+
+1. Has a stable id (e.g. `FW-MGMT-VTY-TELNET`) and an intent in `CHECKS_META`.
+2. Emits a `Finding` only when there is something to report, and **cites the exact
+   source line(s)** as evidence — never a finding without provenance.
+3. Picks its severity/status honestly (`fail`/`warn`/`pass`); don't claim `pass`
+   when nothing was actually checked.
+4. Ships with a **new** test file using inline `parse_text(...)` cases, and must
+   not change the audit result of the shipped `examples/` (so existing tests stay
+   green). If a check intentionally changes existing behavior, say so and update
+   the affected tests deliberately.
+
 ## Principles
 
 - **Reuse, don't reinvent.** If a capability already exists in `ntc-templates`,
@@ -35,6 +63,14 @@ See `docs/spec-v0.1.md` for the data model and parsing rules.
 - **No garbage facts.** If a value can't be parsed cleanly, skip it rather than
   surface something partial/wrong.
 - **Keep the core dependency-free.**
+
+## Project files
+
+- [`CHANGELOG.md`](CHANGELOG.md) — version history (Keep a Changelog).
+- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately.
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant.
+- Issue templates (Config parsing / Bug / Feature) and a PR checklist live under
+  [`.github/`](.github/).
 
 ## License
 
