@@ -194,6 +194,19 @@ class ServiceSet:
 
 
 @dataclass
+class UserInterface:
+    """A ``user-interface con N`` or ``user-interface vty FIRST [LAST]`` block."""
+    kind: Traced[str]                            # "con" or "vty"
+    first: Traced[int]
+    source: SourceRef
+    last: Optional[Traced[int]] = None
+    protocol_inbound: List[Traced[str]] = field(default_factory=list)  # ssh/telnet/all
+    acl_inbound: Optional[Traced[str]] = None
+    authentication_mode: Optional[Traced[str]] = None
+    privilege_level: Optional[Traced[int]] = None
+
+
+@dataclass
 class Hrp:
     """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
     source: SourceRef
@@ -222,6 +235,7 @@ class VrpConfig:
     nat_policy_rules: List[NatPolicyRule] = field(default_factory=list)
     nat_servers: List[NatServer] = field(default_factory=list)
     hrp: Optional[Hrp] = None
+    user_interfaces: List[UserInterface] = field(default_factory=list)
     telnet_server_enabled: Optional[Traced[bool]] = None
     http_server_enabled: Optional[Traced[bool]] = None
 
