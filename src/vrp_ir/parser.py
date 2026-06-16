@@ -1,18 +1,18 @@
 """Huawei VRP config text -> :class:`VrpConfig` (routing/switching + USG firewall).
 
 Robust to VRP's `#`-delimited sections: a section opener keyword (interface /
-vlan / ip vpn-instance / acl / firewall zone / security-policy) sets the current
-context regardless of leading whitespace; `#`/`return`/`quit` close it (blank
-lines do not); one-line globals (sysname, ip route-static, vlan batch, nat
-server, hrp, !Software Version) are dispatched by keyword.
+vlan / ip vpn-instance / acl / firewall zone / security-policy / nat-policy)
+sets the current context regardless of leading whitespace; `#`/`return`/`quit`
+close it (blank lines do not); one-line globals (sysname, ip route-static, vlan
+batch, nat server, hrp, !Software Version) are dispatched by keyword.
 """
 from __future__ import annotations
 
 from typing import List, Optional
 
 from .models import (Acl, AclRule, FirewallZone, Hrp, Interface, Ipv4Address,
-                     NatServer, SecurityRule, StaticRoute, Vlan, VlanRange,
-                     Vrf, VrpConfig)
+                     NatPolicyRule, NatServer, SecurityRule, StaticRoute, Vlan,
+                     VlanRange, Vrf, VrpConfig)
 from .sourceref import SourceRef, Traced
 
 
@@ -64,7 +64,7 @@ def _parse_vlan_ranges(tokens: List[str], src: SourceRef) -> List[VlanRange]:
 
 def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
     cfg = VrpConfig(source_file=filename)
-    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy
+    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy | natpolicy
     ctx_obj = None
 
     for lineno, raw in enumerate(text.splitlines(), start=1):
@@ -118,6 +118,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         if s == "security-policy":
             ctx_kind, ctx_obj = "secpolicy", None
             continue
+        if s == "nat-policy":
+            ctx_kind, ctx_obj = "natpolicy", None
+            continue
 
         # --- one-line globals ---
         if s.startswith("sysname "):
@@ -147,6 +150,8 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             _zone_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "secpolicy":
             ctx_obj = _secpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "natpolicy":
+            ctx_obj = _natpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
 
     return cfg
 
@@ -326,27 +331,54 @@ def _secpolicy_dispatch(cfg: VrpConfig, rule: Optional[SecurityRule], s: str,
 
 
 def _secrule_line(rule: SecurityRule, s: str, raw: str, fn: str, ln: int) -> None:
-    def add(prefix: str, lst: List) -> None:
-        v = s[len(prefix):].strip()
-        lst.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+    if _policy_rule_line(rule, s, raw, fn, ln):
+        return
+    if add("profile ", rule.profiles, s, raw, fn, ln):
+        return
+    if s.startswith("session logging"):
+        rule.session_logging = Traced(True, SourceRef(fn, ln, None, raw))
 
-    if s.startswith("source-zone "):
-        add("source-zone ", rule.source_zones)
-    elif s.startswith("destination-zone "):
-        add("destination-zone ", rule.destination_zones)
-    elif s.startswith("source-address "):
-        add("source-address ", rule.source_addresses)
-    elif s.startswith("destination-address "):
-        add("destination-address ", rule.destination_addresses)
-    elif s.startswith("service "):
-        add("service ", rule.services)
-    elif s.startswith("profile "):
-        add("profile ", rule.profiles)
-    elif s.startswith("action "):
+
+def _natpolicy_dispatch(cfg: VrpConfig, rule: Optional[NatPolicyRule], s: str,
+                        raw: str, fn: str, ln: int) -> Optional[NatPolicyRule]:
+    if s.startswith("rule name "):
+        name = s[len("rule name "):].strip()
+        src = SourceRef(fn, ln, _col(raw, name), raw)
+        rule = NatPolicyRule(name=Traced(name, src), source=src)
+        cfg.nat_policy_rules.append(rule)
+    elif rule is not None:
+        _natpolicy_rule_line(rule, s, raw, fn, ln)
+    return rule
+
+
+def _natpolicy_rule_line(rule: NatPolicyRule, s: str, raw: str, fn: str, ln: int) -> None:
+    _policy_rule_line(rule, s, raw, fn, ln)
+
+
+def add(prefix: str, lst: List[Traced[str]], s: str, raw: str, fn: str, ln: int) -> bool:
+    if not s.startswith(prefix):
+        return False
+    v = s[len(prefix):].strip()
+    lst.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+    return True
+
+
+def _policy_rule_line(rule, s: str, raw: str, fn: str, ln: int) -> bool:
+    if add("source-zone ", rule.source_zones, s, raw, fn, ln):
+        return True
+    if add("destination-zone ", rule.destination_zones, s, raw, fn, ln):
+        return True
+    if add("source-address ", rule.source_addresses, s, raw, fn, ln):
+        return True
+    if add("destination-address ", rule.destination_addresses, s, raw, fn, ln):
+        return True
+    if add("service ", rule.services, s, raw, fn, ln):
+        return True
+    if s.startswith("action "):
         v = s[len("action "):].strip()
         rule.action = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
-    elif s.startswith("session logging"):
-        rule.session_logging = Traced(True, SourceRef(fn, ln, None, raw))
+        return True
+    return False
 
 
 def _parse_nat_server(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:

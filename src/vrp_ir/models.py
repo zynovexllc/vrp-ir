@@ -9,8 +9,8 @@ Every meaningful field is wrapped in :class:`~vrp_ir.sourceref.Traced` so it
 carries a :class:`~vrp_ir.sourceref.SourceRef` back to its origin line. The IR
 is plain ``dataclasses`` (zero runtime dependencies).
 
-USG firewall objects (zone / security-policy / nat server / hrp) are added in
-v0.3 and slot into the same generic serializer below.
+USG firewall objects (zone / security-policy / nat-policy / nat server / hrp)
+are added in v0.3/v0.4 and slot into the same generic serializer below.
 """
 from __future__ import annotations
 
@@ -141,6 +141,19 @@ class NatServer:
 
 
 @dataclass
+class NatPolicyRule:
+    """One ``rule name <name>`` inside ``nat-policy`` (audit-facing subset)."""
+    name: Traced[str]
+    source: SourceRef
+    source_zones: List[Traced[str]] = field(default_factory=list)
+    destination_zones: List[Traced[str]] = field(default_factory=list)
+    source_addresses: List[Traced[str]] = field(default_factory=list)
+    destination_addresses: List[Traced[str]] = field(default_factory=list)
+    services: List[Traced[str]] = field(default_factory=list)
+    action: Optional[Traced[str]] = None  # source-nat easy-ip | no-nat | ...
+
+
+@dataclass
 class Hrp:
     """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
     source: SourceRef
@@ -164,6 +177,7 @@ class VrpConfig:
     firewall_zones: List[FirewallZone] = field(default_factory=list)
     security_rules: List[SecurityRule] = field(default_factory=list)
     security_default_action: Optional[Traced[str]] = None  # policy-level `default action`
+    nat_policy_rules: List[NatPolicyRule] = field(default_factory=list)
     nat_servers: List[NatServer] = field(default_factory=list)
     hrp: Optional[Hrp] = None
 
