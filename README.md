@@ -11,12 +11,13 @@ it came from.
 Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its source line
 ```
 
-> Status: **v0.5 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
+> Status: **v0.6 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
 > ACL, static routes) **and USG firewall** (`firewall zone`, `security-policy`,
 > `nat-policy`, `nat server`, `ip address-set` / `ip service-set` objects, `hrp`,
-> telnet/http management switches) parsed with full source provenance, plus a
-> **security acceptance audit** (`vrp-ir audit`, 9 checks) whose findings cite the
-> exact config line. Roadmap below.
+> and the **management plane** — `user-interface` con/vty, `ssh server cipher`,
+> `aaa` local-users, telnet/http switches) parsed with full source provenance,
+> plus a **security acceptance audit** (`vrp-ir audit`, 13 checks) whose findings
+> cite the exact config line. Roadmap below.
 
 > 💼 **Commercial** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
 > security-integration **acceptance** workbench. Need customer-grade acceptance
@@ -82,7 +83,7 @@ print(ip.address.value, ip.prefix_length.value) # 10.10.10.1 24
 print(ip.address.source)                        # examples/sample-vrp.cfg:11  ← provenance
 ```
 
-## Security acceptance audit (v0.5)
+## Security acceptance audit (v0.6)
 
 Turn the source-traceable IR into a **security acceptance report**: each check
 is a small test case (intent), and every finding cites the exact config line it
@@ -101,12 +102,14 @@ Default action is 'permit': all traffic matching no rule is allowed (permit-any)
 - `examples/sample-usg-risky.cfg:14` — `default action permit`
 ```
 
-Checks (9): policy default-deny (permit-any); permit-scope (rules not narrowed by
+Checks (13): policy default-deny (permit-any); permit-scope (rules not narrowed by
 zone/address, **dereferencing `address-set` references** so an object that resolves
 to `0.0.0.0/0` is still flagged); permit rules without session logging;
 one-interface-per-zone; `address-set` equal to any; HRP enabled; HRP enabled but
-heartbeat interface/peer incomplete; Telnet management (cleartext); HTTP management
-(cleartext). See a full rendered report at
+heartbeat interface/peer incomplete; **management plane** — Telnet/HTTP enabled
+(cleartext), VTY accepting Telnet, VTY without an inbound source ACL, weak SSH
+ciphers (CBC/3DES/DES), and local AAA users granted the Telnet service. See a full
+rendered report at
 [`docs/acceptance-report-example.md`](docs/acceptance-report-example.md).
 
 ## Design principles
@@ -133,12 +136,16 @@ heartbeat interface/peer incomplete; Telnet management (cleartext); HTTP managem
 - **v0.4:** security **acceptance audit** — test-case schema
   (`testCase ↔ intent ↔ evidenceRef`) + a Markdown/JSON report generator;
   `vrp-ir audit` with seed firewall checks, each citing its source line. ✅
-- **v0.5 (now):** `nat-policy` blocks, `ip address-set` / `ip service-set`
-  objects, telnet/http management switches; audit grows to **9 checks** —
-  `address-set` dereference in permit-scope, `address-set`-equals-any, HRP
-  consistency, and cleartext management (Telnet / HTTP). ✅
-- **v0.5.x (next):** more management-plane baselines (SNMP community, AAA / local
-  users, NTP / Syslog presence), NAT correctness, `vsys`.
+- **v0.5:** `nat-policy` blocks, `ip address-set` / `ip service-set` objects,
+  telnet/http management switches; audit at 9 checks — `address-set` dereference
+  in permit-scope, `address-set`-equals-any, HRP consistency, cleartext
+  management (Telnet / HTTP). ✅
+- **v0.6 (now):** **management-plane access baseline** (driven by real-world
+  config corpus) — `user-interface` con/vty (protocol inbound / inbound ACL /
+  auth mode), `ssh server cipher`, `aaa` local-users; audit grows to **13
+  checks** (VTY-accepts-Telnet, VTY-no-ACL, weak-SSH-cipher, AAA-user-Telnet). ✅
+- **v0.6.x (next):** SNMP community, NTP / Syslog presence, NAT correctness,
+  `vsys`; widen the test corpus.
 - Later: Huawei security-device coverage (USG / WAF / AntiDDoS / 4A).
 
 ## Commercial / support
