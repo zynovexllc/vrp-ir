@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from .models import (Acl, AclRule, FirewallZone, Hrp, Interface, Ipv4Address,
-                     NatPolicyRule, NatServer, SecurityRule, StaticRoute, Vlan,
-                     VlanRange, Vrf, VrpConfig)
+from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
+                     Hrp, Interface, Ipv4Address, NatPolicyRule, NatServer,
+                     SecurityRule, ServiceSet, ServiceSetItem, StaticRoute,
+                     Vlan, VlanRange, Vrf, VrpConfig)
 from .sourceref import SourceRef, Traced
 
 
@@ -121,6 +122,14 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         if s == "nat-policy":
             ctx_kind, ctx_obj = "natpolicy", None
             continue
+        if s.startswith("ip address-set "):
+            ctx_obj = _open_address_set(cfg, s, raw, filename, lineno)
+            ctx_kind = "addrset"
+            continue
+        if s.startswith("ip service-set "):
+            ctx_obj = _open_service_set(cfg, s, raw, filename, lineno)
+            ctx_kind = "svcset"
+            continue
 
         # --- one-line globals ---
         if s.startswith("sysname "):
@@ -152,6 +161,10 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             ctx_obj = _secpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "natpolicy":
             ctx_obj = _natpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "addrset":
+            _address_set_line(ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "svcset":
+            _service_set_line(ctx_obj, s, raw, filename, lineno)
 
     return cfg
 
@@ -353,6 +366,72 @@ def _natpolicy_dispatch(cfg: VrpConfig, rule: Optional[NatPolicyRule], s: str,
 
 def _natpolicy_rule_line(rule: NatPolicyRule, s: str, raw: str, fn: str, ln: int) -> None:
     _policy_rule_line(rule, s, raw, fn, ln)
+
+
+def _open_address_set(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> AddressSet:
+    rest = s[len("ip address-set "):].split()
+    name = rest[0] if rest else ""
+    set_type = None
+    if "type" in rest:
+        i = rest.index("type")
+        if i + 1 < len(rest):
+            set_type = Traced(rest[i + 1], SourceRef(fn, ln, _col(raw, rest[i + 1]), raw))
+    src = SourceRef(fn, ln, _col(raw, name) if name else None, raw)
+    aset = AddressSet(name=Traced(name, src), source=src, set_type=set_type)
+    cfg.address_sets.append(aset)
+    return aset
+
+
+def _address_set_line(aset: AddressSet, s: str, raw: str, fn: str, ln: int) -> None:
+    if not s.startswith("address "):
+        return
+    rest = s[len("address "):].split()
+    if not rest:
+        return
+    seq = rest[0]
+    seq_src = SourceRef(fn, ln, _col(raw, seq), raw)
+    member = AddressSetMember(seq=Traced(seq, seq_src), source=seq_src)
+    body = rest[1:]
+    if body:
+        first = body[0]
+        member.address = Traced(first, SourceRef(fn, ln, _col(raw, first), raw))
+        if "mask" in body:
+            mi = body.index("mask")
+            if mi + 1 < len(body) and body[mi + 1].isdigit():
+                n = int(body[mi + 1])
+                if 0 <= n <= 32:
+                    member.prefix_length = Traced(n, SourceRef(fn, ln, _col(raw, body[mi + 1]), raw))
+        member.expression = Traced(" ".join(body), SourceRef(fn, ln, _col(raw, first), raw))
+    aset.members.append(member)
+
+
+def _open_service_set(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> ServiceSet:
+    rest = s[len("ip service-set "):].split()
+    name = rest[0] if rest else ""
+    set_type = None
+    if "type" in rest:
+        i = rest.index("type")
+        if i + 1 < len(rest):
+            set_type = Traced(rest[i + 1], SourceRef(fn, ln, _col(raw, rest[i + 1]), raw))
+    src = SourceRef(fn, ln, _col(raw, name) if name else None, raw)
+    sset = ServiceSet(name=Traced(name, src), source=src, set_type=set_type)
+    cfg.service_sets.append(sset)
+    return sset
+
+
+def _service_set_line(sset: ServiceSet, s: str, raw: str, fn: str, ln: int) -> None:
+    if not s.startswith("service "):
+        return
+    rest = s[len("service "):].split()
+    if not rest:
+        return
+    seq = rest[0]
+    seq_src = SourceRef(fn, ln, _col(raw, seq), raw)
+    item = ServiceSetItem(seq=Traced(seq, seq_src), source=seq_src)
+    body = rest[1:]
+    if body:
+        item.expression = Traced(" ".join(body), SourceRef(fn, ln, _col(raw, body[0]), raw))
+    sset.items.append(item)
 
 
 def add(prefix: str, lst: List[Traced[str]], s: str, raw: str, fn: str, ln: int) -> bool:
