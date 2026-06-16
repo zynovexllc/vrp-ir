@@ -1,0 +1,49 @@
+name: publish
+
+# Publishes to PyPI via OIDC Trusted Publishing — no API token is stored in the
+# repo. Triggers:
+#   - pushing a version tag (vX.Y.Z) → publishes that version
+#   - manual run (workflow_dispatch) → publishes the current main build
+#     (used for the first release once the PyPI Trusted Publisher is configured)
+#
+# One-time PyPI setup (project owner): pypi.org → Account → Publishing →
+# Add a pending publisher: PyPI project `vrp-ir`, owner `zynovexllc`,
+# repository `vrp-ir`, workflow `publish.yml` (leave Environment blank).
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi-publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write   # OIDC Trusted Publishing — no stored secret
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
