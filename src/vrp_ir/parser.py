@@ -171,6 +171,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             src = SourceRef(filename, lineno, None, raw)
             cfg.http_server_enabled = Traced(False, src)
             continue
+        if s.startswith("ssh server cipher "):
+            _parse_ssh_server_cipher(cfg, s, raw, filename, lineno)
+            continue
 
         # --- body lines: dispatch to current context ---
         if ctx_kind == "interface":
@@ -588,6 +591,21 @@ def _user_interface_line(ui: UserInterface, s: str, raw: str, fn: str, ln: int) 
         v = s[len("user privilege level "):].strip()
         if v.isdigit():
             ui.privilege_level = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+
+
+def _parse_ssh_server_cipher(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    """Parse 'ssh server cipher <tok1> <tok2> ...' collecting each token with its column."""
+    rest = s[len("ssh server cipher "):]
+    toks = rest.split()
+    prefix_end = raw.find("ssh server cipher ")
+    search_from = (prefix_end + len("ssh server cipher ")) if prefix_end >= 0 else 0
+    for tok in toks:
+        col = raw.find(tok, search_from)
+        if col >= 0:
+            search_from = col + len(tok)
+            cfg.ssh_server_ciphers.append(Traced(tok, SourceRef(fn, ln, col, raw)))
+        else:
+            cfg.ssh_server_ciphers.append(Traced(tok, SourceRef(fn, ln, None, raw)))
 
 
 def parse_file(path: str) -> VrpConfig:
