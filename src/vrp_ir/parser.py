@@ -11,9 +11,10 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
-                     Hrp, Interface, Ipv4Address, NatPolicyRule, NatServer,
-                     SecurityRule, ServiceSet, ServiceSetItem, StaticRoute,
-                     UserInterface, Vlan, VlanRange, Vrf, VrpConfig)
+                     Hrp, Interface, Ipv4Address, LocalUser, NatPolicyRule,
+                     NatServer, SecurityRule, ServiceSet, ServiceSetItem,
+                     StaticRoute, UserInterface, Vlan, VlanRange, Vrf,
+                     VrpConfig)
 from .sourceref import SourceRef, Traced
 
 
@@ -140,6 +141,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             ctx_obj = _open_user_interface(cfg, s, raw, filename, lineno)
             ctx_kind = "userif"
             continue
+        if s == "aaa":
+            ctx_kind, ctx_obj = "aaa", None
+            continue
 
         # --- one-line globals ---
         if s.startswith("sysname "):
@@ -196,6 +200,8 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             _service_set_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "userif":
             _user_interface_line(ctx_obj, s, raw, filename, lineno)
+        elif ctx_kind == "aaa":
+            _aaa_line(cfg, s, raw, filename, lineno)
 
     return cfg
 
@@ -606,6 +612,30 @@ def _parse_ssh_server_cipher(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int)
             cfg.ssh_server_ciphers.append(Traced(tok, SourceRef(fn, ln, col, raw)))
         else:
             cfg.ssh_server_ciphers.append(Traced(tok, SourceRef(fn, ln, None, raw)))
+
+
+def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    """Parse ``local-user NAME service-type TYPE [TYPE ...]`` inside the aaa block."""
+    if not s.startswith("local-user "):
+        return
+    rest = s[len("local-user "):].split()
+    if len(rest) < 3 or rest[1] != "service-type":
+        return
+    name_tok = rest[0]
+    name_src = SourceRef(fn, ln, _col(raw, name_tok), raw)
+    src = SourceRef(fn, ln, None, raw)
+    svc_start = raw.find("service-type")
+    search_from = (svc_start + len("service-type ")) if svc_start >= 0 else 0
+    service_types: List[Traced[str]] = []
+    for tok in rest[2:]:
+        col = raw.find(tok, search_from)
+        if col >= 0:
+            search_from = col + len(tok)
+            service_types.append(Traced(tok, SourceRef(fn, ln, col, raw)))
+        else:
+            service_types.append(Traced(tok, SourceRef(fn, ln, None, raw)))
+    cfg.local_users.append(LocalUser(name=Traced(name_tok, name_src),
+                                     service_types=service_types, source=src))
 
 
 def parse_file(path: str) -> VrpConfig:
