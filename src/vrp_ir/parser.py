@@ -153,6 +153,14 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             src = SourceRef(filename, lineno, None, raw)
             cfg.telnet_server_enabled = Traced(False, src)
             continue
+        if s == "http server enable":
+            src = SourceRef(filename, lineno, None, raw)
+            cfg.http_server_enabled = Traced(True, src)
+            continue
+        if s == "undo http server enable":
+            src = SourceRef(filename, lineno, None, raw)
+            cfg.http_server_enabled = Traced(False, src)
+            continue
 
         # --- body lines: dispatch to current context ---
         if ctx_kind == "interface":
