@@ -14,7 +14,7 @@ from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LocalUser, NatPolicyRule,
                      NatServer, NtpServer, SecurityRule, ServiceSet,
                      ServiceSetItem, StaticRoute, UserInterface, Vlan,
-                     VlanRange, Vrf, VrpConfig)
+                     VlanRange, Vrf, VrpConfig, SnmpCommunity)
 from .sourceref import SourceRef, Traced
 
 
@@ -158,6 +158,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             or s.startswith("ntp unicast-server ")
         ):
             _parse_ntp_server(cfg, s, raw, filename, lineno)
+            continue
+        if s.startswith("snmp-agent community "):
+            _parse_snmp_community(cfg, s, raw, filename, lineno)
             continue
         if s.startswith("nat server "):
             _parse_nat_server(cfg, s, raw, filename, lineno)
@@ -355,6 +358,28 @@ def _parse_ntp_server(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Non
 
     cfg.ntp_servers.append(NtpServer(
         address=Traced(address, src), source=src, vpn_instance=vpn))
+
+
+def _parse_snmp_community(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    rest = s[len("snmp-agent community "):].split()
+    if len(rest) < 2 or rest[0] not in ("read", "write"):
+        return
+
+    access = rest[0]
+    access_src = SourceRef(fn, ln, _col(raw, access), raw)
+    community = None
+    encrypted = None
+    if rest[1] == "cipher":
+        encrypted = Traced(True, SourceRef(fn, ln, _col(raw, rest[1]), raw))
+    else:
+        community = Traced(rest[1], SourceRef(fn, ln, _col(raw, rest[1]), raw))
+
+    cfg.snmp_communities.append(SnmpCommunity(
+        access_mode=Traced(access, access_src),
+        source=access_src,
+        community=community,
+        encrypted=encrypted,
+    ))
 
 
 def _open_zone(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> FirewallZone:

@@ -85,6 +85,14 @@ class NtpServer:
 
 
 @dataclass
+class SnmpCommunity:
+    access_mode: Traced[str]
+    source: SourceRef
+    community: Optional[Traced[str]] = None
+    encrypted: Optional[Traced[bool]] = None
+
+
+@dataclass
 class Interface:
     name: Traced[str]
     source: SourceRef
@@ -243,6 +251,7 @@ class VrpConfig:
     interfaces: List[Interface] = field(default_factory=list)
     static_routes: List[StaticRoute] = field(default_factory=list)
     ntp_servers: List[NtpServer] = field(default_factory=list)
+    snmp_communities: List[SnmpCommunity] = field(default_factory=list)
     firewall_zones: List[FirewallZone] = field(default_factory=list)
     security_rules: List[SecurityRule] = field(default_factory=list)
     security_default_action: Optional[Traced[str]] = None  # policy-level `default action`
