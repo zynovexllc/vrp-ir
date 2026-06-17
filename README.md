@@ -7,6 +7,13 @@
 
 **Source-traceable structured IR for Huawei VRP configurations.**
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/zynovexllc/vrp-ir/main/docs/demo/demo.gif"
+       alt="vrp-ir: parse a Huawei config with field-level provenance, then run a line-cited security audit"
+       width="760">
+</p>
+
+
 `vrp-ir` parses an offline Huawei VRP configuration file (`display
 current-configuration` output / saved `.cfg`) into a structured, typed model
 where **every parsed value carries a `SourceRef` back to the exact file + line**
