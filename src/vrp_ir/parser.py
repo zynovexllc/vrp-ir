@@ -4,7 +4,7 @@ Robust to VRP's `#`-delimited sections: a section opener keyword (interface /
 vlan / ip vpn-instance / acl / firewall zone / security-policy / nat-policy)
 sets the current context regardless of leading whitespace; `#`/`return`/`quit`
 close it (blank lines do not); one-line globals (sysname, ip route-static, vlan
-batch, nat server, hrp, !Software Version) are dispatched by keyword.
+batch, nat server, ntp server, hrp, !Software Version) are dispatched by keyword.
 """
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ from typing import List, Optional
 
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LocalUser, NatPolicyRule,
-                     NatServer, SecurityRule, ServiceSet, ServiceSetItem,
-                     StaticRoute, UserInterface, Vlan, VlanRange, Vrf,
-                     VrpConfig)
+                     NatServer, NtpServer, SecurityRule, ServiceSet,
+                     ServiceSetItem, StaticRoute, UserInterface, Vlan,
+                     VlanRange, Vrf, VrpConfig)
 from .sourceref import SourceRef, Traced
 
 
@@ -152,6 +152,12 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
         if s.startswith("ip route-static "):
             _parse_static_route(cfg, s, raw, filename, lineno)
+            continue
+        if (
+            s.startswith("ntp-service unicast-server ")
+            or s.startswith("ntp unicast-server ")
+        ):
+            _parse_ntp_server(cfg, s, raw, filename, lineno)
             continue
         if s.startswith("nat server "):
             _parse_nat_server(cfg, s, raw, filename, lineno)
@@ -326,6 +332,29 @@ def _parse_static_route(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> N
         destination=Traced(dest, SourceRef(fn, ln, _col(raw, dest), raw)),
         mask=Traced(mask, src), next_hop=Traced(nh, src), source=src,
         vpn_instance=vpn, preference=pref))
+
+
+def _parse_ntp_server(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    if s.startswith("ntp-service unicast-server "):
+        rest = s[len("ntp-service unicast-server "):].split()
+    elif s.startswith("ntp unicast-server "):
+        rest = s[len("ntp unicast-server "):].split()
+    else:
+        return
+    if not rest:
+        return
+
+    address = rest[0]
+    src = SourceRef(fn, ln, _col(raw, address), raw)
+    vpn = None
+    if "vpn-instance" in rest:
+        i = rest.index("vpn-instance")
+        if i + 1 < len(rest):
+            vpn_name = rest[i + 1]
+            vpn = Traced(vpn_name, SourceRef(fn, ln, _col(raw, vpn_name), raw))
+
+    cfg.ntp_servers.append(NtpServer(
+        address=Traced(address, src), source=src, vpn_instance=vpn))
 
 
 def _open_zone(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> FirewallZone:
