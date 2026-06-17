@@ -1,0 +1,42 @@
+name: release-please
+
+# Automates releases from Conventional Commits: maintains a "release PR" that
+# bumps the version (pyproject.toml + src/vrp_ir/__init__.py) and updates
+# CHANGELOG.md; merging that PR creates the GitHub release and the vX.Y.Z tag.
+#
+# The tag is what publishes to PyPI: it triggers `publish.yml` (OIDC Trusted
+# Publishing). Because GITHUB_TOKEN-created tags do NOT trigger other workflows,
+# release-please must create the tag with a USER PAT — stored as the repo secret
+# `RELEASE_PLEASE_TOKEN` (fine-grained: this repo, Contents + Pull requests
+# read/write). With no secret set, release-please simply doesn't run.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that the release token is configured
+        id: cfg
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -n "${RELEASE_PLEASE_TOKEN}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::RELEASE_PLEASE_TOKEN secret not set — skipping. Add a PAT (Contents + Pull requests: write) as repo secret RELEASE_PLEASE_TOKEN to enable releases."
+          fi
+
+      - name: Release Please
+        if: steps.cfg.outputs.ready == 'true'
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
