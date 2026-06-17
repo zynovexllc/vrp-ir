@@ -1,0 +1,102 @@
+name: ai-review
+
+# Posts a non-binding, AI first-pass review on external (fork) pull requests
+# using GitHub Models — free inference via the built-in GITHUB_TOKEN. This is
+# NOT Copilot and uses no external API key (respects ToS + the "no stored
+# secret" goal).
+#
+# Uses pull_request_target so it can comment on PRs from forks (the default
+# token on a fork's `pull_request` run is read-only).
+#
+# SECURITY:
+#   - This workflow NEVER checks out or executes PR code. It only reads the diff
+#     text via the API, sends it to the model, and posts a comment.
+#   - No secrets are placed in the prompt; the model has NO tools/actions
+#     (enable-github-mcp is off by default), so the worst case is comment text.
+#   - PR title/body are passed via `env:` (never interpolated into the shell) to
+#     avoid script injection.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Only external (fork) PRs — our own PRs we review directly.
+    if: github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect PR context (diff via API; no checkout, no PR code executed)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            echo "PR #${PR}: ${TITLE}"
+            echo
+            echo "Description:"
+            echo "${BODY}"
+            echo
+            echo "Changed files:"
+            gh pr view "${PR}" --repo "${REPO}" --json files --jq '.files[].path'
+            echo
+            echo "Unified diff (truncated to 30000 chars):"
+            gh pr diff "${PR}" --repo "${REPO}" | head -c 30000
+          } > prompt.txt
+
+      - name: AI first-pass review (GitHub Models)
+        id: review
+        continue-on-error: true
+        uses: actions/ai-inference@v2
+        with:
+          model: openai/gpt-4o
+          max-completion-tokens: '900'
+          system-prompt: |
+            You are a senior reviewer for "vrp-ir", an audit/IR tool that parses
+            Huawei VRP/USG configs into a source-traceable model. Give a SHORT,
+            high-signal first-pass review of the PR diff below. Only flag things
+            that genuinely matter; do not nitpick style. Report under these
+            headings:
+            1) Intent — does the change match its linked issue / stated summary?
+            2) Tests — are there tests for the new behavior, and are any EXISTING
+               tests weakened, skipped, or deleted? (weakening existing tests is a
+               red flag — call it out loudly.)
+            3) Conventions — parsed values must carry a SourceRef ("provenance or
+               nothing — no garbage facts"); new dataclasses should use Traced[...]
+               fields plus a top-level `source: SourceRef`; new parser keywords are
+               dispatched next to the other one-line globals.
+            4) Security / supply-chain — flag ANY new dependency, subprocess or
+               network call, or change under `.github/workflows/`; these require
+               human security review.
+            Finish with exactly one line:
+            "Recommendation: LGTM" or "Recommendation: Needs changes" or
+            "Recommendation: Needs human security review".
+            Keep it under ~250 words. You are advisory only — a human makes the
+            merge decision.
+          prompt-file: prompt.txt
+
+      - name: Post review comment
+        if: steps.review.outputs.response != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          REVIEW: ${{ steps.review.outputs.response }}
+        run: |
+          {
+            echo "🤖 **Automated first-pass review** — GitHub Models, **non-binding**. Treat it as a checklist, not a verdict; a maintainer makes the final call."
+            echo
+            echo "${REVIEW}"
+          } > comment.md
+          gh pr comment "${PR}" --repo "${REPO}" --body-file comment.md
