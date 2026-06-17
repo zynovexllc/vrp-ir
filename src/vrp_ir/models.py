@@ -78,6 +78,13 @@ class StaticRoute:
 
 
 @dataclass
+class NtpServer:
+    address: Traced[str]
+    source: SourceRef
+    vpn_instance: Optional[Traced[str]] = None
+
+
+@dataclass
 class Interface:
     name: Traced[str]
     source: SourceRef
@@ -235,6 +242,7 @@ class VrpConfig:
     acls: List[Acl] = field(default_factory=list)
     interfaces: List[Interface] = field(default_factory=list)
     static_routes: List[StaticRoute] = field(default_factory=list)
+    ntp_servers: List[NtpServer] = field(default_factory=list)
     firewall_zones: List[FirewallZone] = field(default_factory=list)
     security_rules: List[SecurityRule] = field(default_factory=list)
     security_default_action: Optional[Traced[str]] = None  # policy-level `default action`
