@@ -1,0 +1,37 @@
+name: welcome
+
+# Greets first-time issue and PR authors so newcomers get an immediate, friendly
+# response even when no maintainer is online.
+#
+# Uses `pull_request_target` so the greeting also works for PRs from forks.
+#
+# SECURITY: this workflow never checks out or executes PR code. It only posts a
+# comment via the API, so running it in the base (privileged) context is safe.
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >
+            👋 Thanks for opening your first issue in **vrp-ir**! A maintainer
+            will take a look soon. The most useful issues include a real,
+            de-identified Huawei VRP/USG config snippet we parse incorrectly —
+            see [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md).
+          pr-message: >
+            🎉 Thanks for your first pull request to **vrp-ir**! CI will run the
+            test suite (Python 3.9 + 3.12) and ruff. A maintainer will review
+            shortly. Please make sure
+            `PYTHONPATH=src python -m unittest discover -s tests` passes, and that
+            any new parsing carries a `SourceRef` — provenance or nothing 🙂.

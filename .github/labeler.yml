@@ -1,0 +1,27 @@
+parser:
+  - changed-files:
+      - any-glob-to-any-file: 'src/vrp_ir/parser.py'
+
+models:
+  - changed-files:
+      - any-glob-to-any-file: 'src/vrp_ir/models.py'
+
+audit:
+  - changed-files:
+      - any-glob-to-any-file: 'src/vrp_ir/acceptance.py'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: 'tests/**'
+
+examples:
+  - changed-files:
+      - any-glob-to-any-file: 'examples/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ['**/*.md', 'docs/**']
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
