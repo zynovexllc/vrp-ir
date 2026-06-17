@@ -1,18 +1,24 @@
 name: ai-review
 
 # Posts a non-binding, AI first-pass review on external (fork) pull requests
-# using GitHub Models — free inference via the built-in GITHUB_TOKEN. This is
-# NOT Copilot and uses no external API key (respects ToS + the "no stored
-# secret" goal).
+# using GitHub Models. This is NOT Copilot (a sanctioned first-party feature is a
+# separate option); it calls the Models inference API.
 #
-# Uses pull_request_target so it can comment on PRs from forks (the default
-# token on a fork's `pull_request` run is read-only).
+# AUTH: in this org the Actions GITHUB_TOKEN cannot call Models — a USER token is
+# required. The inference step authenticates with a user PAT stored as the repo
+# secret `MODELS_TOKEN` (fine-grained PAT, "Models" read permission only — minimal
+# blast radius). If the secret is absent the review is skipped cleanly. The PAT is
+# used ONLY by the inference step; the PR comment is posted with the default
+# GITHUB_TOKEN.
+#
+# Uses pull_request_target so it can comment on PRs from forks (the default token
+# on a fork's `pull_request` run is read-only).
 #
 # SECURITY:
 #   - This workflow NEVER checks out or executes PR code. It only reads the diff
 #     text via the API, sends it to the model, and posts a comment.
-#   - No secrets are placed in the prompt; the model has NO tools/actions
-#     (enable-github-mcp is off by default), so the worst case is comment text.
+#   - The MODELS_TOKEN PAT is never placed in the prompt or logs; the model has NO
+#     tools/actions (enable-github-mcp is off), so the worst case is comment text.
 #   - PR title/body are passed via `env:` (never interpolated into the shell) to
 #     avoid script injection.
 on:
@@ -22,7 +28,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  models: read
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
@@ -55,11 +60,25 @@ jobs:
             gh pr diff "${PR}" --repo "${REPO}" | head -c 30000
           } > prompt.txt
 
+      - name: Check that the Models token is configured
+        id: cfg
+        env:
+          MODELS_TOKEN: ${{ secrets.MODELS_TOKEN }}
+        run: |
+          if [ -n "${MODELS_TOKEN}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::MODELS_TOKEN secret is not set — skipping AI review. Add a user PAT with the Models permission as repo secret MODELS_TOKEN to enable it."
+          fi
+
       - name: AI first-pass review (GitHub Models)
         id: review
+        if: steps.cfg.outputs.ready == 'true'
         continue-on-error: true
         uses: actions/ai-inference@v2
         with:
+          token: ${{ secrets.MODELS_TOKEN }}
           model: openai/gpt-4o
           max-completion-tokens: '900'
           system-prompt: |
