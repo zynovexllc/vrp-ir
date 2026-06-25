@@ -9,6 +9,7 @@ body:
         Thanks! A real (but **de-identified**) snippet we parse wrong is the single
         most useful contribution. Please scrub real IPs, hostnames, keys and
         community strings before pasting — synthetic values are perfect.
+        See `docs/de-identifying-configs.md` for the de-identification checklist.
   - type: textarea
     id: snippet
     attributes:
@@ -48,4 +49,6 @@ body:
       label: Confirmation
       options:
         - label: The snippet contains no real production data (it is synthetic or de-identified).
+          required: true
+        - label: I scrubbed hostnames, IPs, SNMP communities, passwords, keys and customer identifiers.
           required: true

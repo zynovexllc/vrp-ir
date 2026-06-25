@@ -20,7 +20,7 @@ body:
     id: repro
     attributes:
       label: Steps to reproduce
-      description: Commands run and (de-identified) input used.
+      description: Commands run and synthetic/de-identified input used. See docs/de-identifying-configs.md.
       render: shell
     validations:
       required: false
@@ -31,3 +31,10 @@ body:
       placeholder: "vrp-ir 0.6.0, Python 3.12"
     validations:
       required: false
+  - type: checkboxes
+    id: data-safety
+    attributes:
+      label: Data safety
+      options:
+        - label: Any config snippet or command output is synthetic or de-identified.
+          required: true
