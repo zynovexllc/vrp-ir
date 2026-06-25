@@ -56,6 +56,8 @@ class Finding:
 class AcceptanceReport:
     source_file: str
     findings: List[Finding] = field(default_factory=list)
+    analyzed_line_count: int = 0
+    unparsed_lines: List[SourceRef] = field(default_factory=list)
 
     @property
     def result(self) -> str:
@@ -71,11 +73,30 @@ class AcceptanceReport:
             c[f.status] = c.get(f.status, 0) + 1
         return c
 
+    def parser_coverage(self) -> Dict[str, object]:
+        unparsed = len(self.unparsed_lines)
+        recognized = max(0, self.analyzed_line_count - unparsed)
+        percent = None
+        if self.analyzed_line_count:
+            percent = round((recognized / self.analyzed_line_count) * 100, 1)
+        return {
+            "analyzed_lines": self.analyzed_line_count,
+            "recognized_lines": recognized,
+            "unparsed_lines": unparsed,
+            "coverage_percent": percent,
+        }
+
     def to_dict(self) -> dict:
         return {
             "source_file": self.source_file,
             "result": self.result,
             "counts": self.counts(),
+            "parser_coverage": {
+                **self.parser_coverage(),
+                "unparsed": [{"file": e.file, "line": e.line, "col": e.col,
+                              "raw": e.raw.strip() if e.raw else None}
+                             for e in self.unparsed_lines],
+            },
             "findings": [{
                 "check_id": f.check_id,
                 "severity": f.severity,
@@ -338,7 +359,11 @@ CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
     """Run all acceptance checks; findings are ordered fail/warn/pass then severity."""
-    report = AcceptanceReport(source_file=cfg.source_file)
+    report = AcceptanceReport(
+        source_file=cfg.source_file,
+        analyzed_line_count=cfg.analyzed_line_count,
+        unparsed_lines=list(cfg.unparsed_lines),
+    )
     for check in CHECKS:
         report.findings.extend(check(cfg))
     report.findings.sort(key=lambda f: (_STATUS_ORDER.get(f.status, 9),
@@ -357,13 +382,18 @@ def render_markdown(report: AcceptanceReport) -> str:
         "# Security Acceptance Report",
         "",
         f"- **Config**: `{report.source_file}`",
+        _parser_coverage_summary(report),
     ]
     if not report.findings:
+        out += _parser_coverage_details(report)
         out += ["", f"_{_NA}_", ""]
         return "\n".join(out) + "\n"
     out += [
         f"- **Result**: {_STATUS_ICON[report.result]} {report.result.upper()}",
         f"- **Summary**: {c['fail']} FAIL · {c['warn']} WARN · {c['pass']} PASS",
+    ]
+    out += _parser_coverage_details(report)
+    out += [
         "",
         "## Checks",
     ]
@@ -381,3 +411,23 @@ def render_markdown(report: AcceptanceReport) -> str:
                 snippet = f" — `{e.raw.strip()}`" if e.raw else ""
                 out.append(f"- `{e.file}:{e.line}`{snippet}")
     return "\n".join(out) + "\n"
+
+
+def _parser_coverage_summary(report: AcceptanceReport) -> str:
+    c = report.parser_coverage()
+    pct = c["coverage_percent"]
+    pct_text = "n/a" if pct is None else f"{pct:.1f}%"
+    return (
+        f"- **Parser coverage**: {c['recognized_lines']}/{c['analyzed_lines']} "
+        f"recognized ({pct_text}); {c['unparsed_lines']} unparsed"
+    )
+
+
+def _parser_coverage_details(report: AcceptanceReport) -> List[str]:
+    if not report.unparsed_lines:
+        return []
+    out = ["", "## Parser coverage", "", "Unparsed lines are surfaced so audit users can judge parser coverage:"]
+    for e in report.unparsed_lines:
+        snippet = f" — `{e.raw.strip()}`" if e.raw else ""
+        out.append(f"- `{e.file}:{e.line}`{snippet}")
+    return out

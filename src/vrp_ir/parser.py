@@ -80,15 +80,19 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
         if s.startswith("!"):
             if s.startswith("!Software Version"):
+                cfg.analyzed_line_count += 1
                 v = s[len("!Software Version"):].strip()
                 cfg.software_version = Traced(v, SourceRef(filename, lineno, _col(raw, v), raw))
             continue
+
+        cfg.analyzed_line_count += 1
 
         # --- section openers (match regardless of leading whitespace) ---
         # For user-interface body: dispatch before section-opener checks so that
         # sub-commands like `acl 2000 inbound` are not mistaken for new contexts.
         if ctx_kind == "userif":
-            _user_interface_line(ctx_obj, s, raw, filename, lineno)
+            if not _user_interface_line(ctx_obj, s, raw, filename, lineno):
+                cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
             continue
 
         if s.startswith("interface "):
@@ -191,38 +195,43 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
 
         # --- body lines: dispatch to current context ---
+        parsed = False
         if ctx_kind == "interface":
-            _iface_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _iface_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "vlan":
-            _vlan_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _vlan_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "vrf":
-            _vrf_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _vrf_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "acl":
-            _acl_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _acl_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "fwzone":
-            _zone_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _zone_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "secpolicy":
-            ctx_obj = _secpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
+            ctx_obj, parsed = _secpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "natpolicy":
-            ctx_obj = _natpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
+            ctx_obj, parsed = _natpolicy_dispatch(cfg, ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "addrset":
-            _address_set_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _address_set_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "svcset":
-            _service_set_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _service_set_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "userif":
-            _user_interface_line(ctx_obj, s, raw, filename, lineno)
+            parsed = _user_interface_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "aaa":
-            _aaa_line(cfg, s, raw, filename, lineno)
+            parsed = _aaa_line(cfg, s, raw, filename, lineno)
+        if not parsed:
+            cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
 
     return cfg
 
 
-def _iface_line(itf: Interface, s: str, raw: str, fn: str, ln: int) -> None:
+def _iface_line(itf: Interface, s: str, raw: str, fn: str, ln: int) -> bool:
     if s.startswith("description "):
         v = s[len("description "):].strip()
         itf.description = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s == "shutdown":
         itf.shutdown = Traced(True, SourceRef(fn, ln, None, raw))
+        return True
     elif s.startswith("ip address "):
         rest = s[len("ip address "):].split()
         if len(rest) >= 2:
@@ -231,39 +240,50 @@ def _iface_line(itf: Interface, s: str, raw: str, fn: str, ln: int) -> None:
                 src = SourceRef(fn, ln, _col(raw, rest[0]), raw)
                 itf.ipv4.append(Ipv4Address(Traced(rest[0], src), Traced(prefix, src),
                                             is_secondary=(len(rest) >= 3 and rest[2] == "sub")))
+        return True
     elif s.startswith("ip binding vpn-instance "):
         v = s[len("ip binding vpn-instance "):].strip()
         itf.vpn_instance = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("port link-type "):
         v = s[len("port link-type "):].strip()
         itf.link_type = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("port default vlan "):
         v = s[len("port default vlan "):].strip()
         if v.isdigit():
             itf.default_vlan = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("port trunk allow-pass vlan "):
         toks = s[len("port trunk allow-pass vlan "):].split()
         itf.trunk_vlans.extend(_parse_vlan_ranges(toks, SourceRef(fn, ln, None, raw)))
+        return True
     elif s.startswith("eth-trunk "):
         v = s[len("eth-trunk "):].strip()
         if v.isdigit():
             itf.eth_trunk = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("vlan-type dot1q "):
         v = s[len("vlan-type dot1q "):].strip()
         if v.isdigit():
             itf.dot1q_vlan = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+        return True
+    return False
 
 
-def _vlan_line(vlan: Vlan, s: str, raw: str, fn: str, ln: int) -> None:
+def _vlan_line(vlan: Vlan, s: str, raw: str, fn: str, ln: int) -> bool:
     if s.startswith("description "):
         v = s[len("description "):].strip()
         vlan.description = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return True
+    return False
 
 
-def _vrf_line(vrf: Vrf, s: str, raw: str, fn: str, ln: int) -> None:
+def _vrf_line(vrf: Vrf, s: str, raw: str, fn: str, ln: int) -> bool:
     if s.startswith("route-distinguisher "):
         v = s[len("route-distinguisher "):].strip()
         vrf.route_distinguisher = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("vpn-target "):
         # Syntax: vpn-target <rt> [<rt> ...] [both | export-extcommunity |
         # import-extcommunity] [evpn]. The direction keyword (VRP default
@@ -286,6 +306,8 @@ def _vrf_line(vrf: Vrf, s: str, raw: str, fn: str, ln: int) -> None:
                 vrf.export_targets.append(tr)
             if direction in ("both", "import-extcommunity"):
                 vrf.import_targets.append(tr)
+        return True
+    return False
 
 
 def _open_acl(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Acl:
@@ -305,9 +327,9 @@ def _open_acl(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Acl:
     return acl
 
 
-def _acl_line(acl: Acl, s: str, raw: str, fn: str, ln: int) -> None:
+def _acl_line(acl: Acl, s: str, raw: str, fn: str, ln: int) -> bool:
     if not s.startswith("rule "):
-        return
+        return False
     rest = s[len("rule "):].split()
     if len(rest) >= 2 and rest[0].isdigit() and rest[1] in ("permit", "deny"):
         seq, action = rest[0], rest[1]
@@ -316,6 +338,7 @@ def _acl_line(acl: Acl, s: str, raw: str, fn: str, ln: int) -> None:
         acl.rules.append(AclRule(
             seq=Traced(int(seq), src), action=Traced(action, src), source=src,
             body=Traced(body, src) if body else None))
+    return True
 
 
 def _parse_static_route(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
@@ -401,18 +424,21 @@ def _open_zone(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> FirewallZo
     return zone
 
 
-def _zone_line(zone: FirewallZone, s: str, raw: str, fn: str, ln: int) -> None:
+def _zone_line(zone: FirewallZone, s: str, raw: str, fn: str, ln: int) -> bool:
     if s.startswith("set priority "):
         v = s[len("set priority "):].strip()
         if v.isdigit():
             zone.priority = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("add interface "):
         v = s[len("add interface "):].strip()
         zone.interfaces.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+        return True
+    return False
 
 
 def _secpolicy_dispatch(cfg: VrpConfig, rule: Optional[SecurityRule], s: str,
-                        raw: str, fn: str, ln: int) -> Optional[SecurityRule]:
+                        raw: str, fn: str, ln: int):
     """Handle a line inside ``security-policy``; return the current rule.
 
     ``rule name <name>`` opens a new rule (implicitly closing the previous one,
@@ -424,6 +450,7 @@ def _secpolicy_dispatch(cfg: VrpConfig, rule: Optional[SecurityRule], s: str,
         src = SourceRef(fn, ln, _col(raw, name), raw)
         rule = SecurityRule(name=Traced(name, src), source=src)
         cfg.security_rules.append(rule)
+        return rule, True
     elif s.startswith("default action ") or s.startswith("default-action "):
         # Policy-level default for traffic matching no rule. `default action
         # permit` is permit-any — the single most important fact NOT to lose,
@@ -431,34 +458,38 @@ def _secpolicy_dispatch(cfg: VrpConfig, rule: Optional[SecurityRule], s: str,
         prefix = "default action " if s.startswith("default action ") else "default-action "
         v = s[len(prefix):].strip()
         cfg.security_default_action = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return rule, True
     elif rule is not None:
-        _secrule_line(rule, s, raw, fn, ln)
-    return rule
+        return rule, _secrule_line(rule, s, raw, fn, ln)
+    return rule, False
 
 
-def _secrule_line(rule: SecurityRule, s: str, raw: str, fn: str, ln: int) -> None:
+def _secrule_line(rule: SecurityRule, s: str, raw: str, fn: str, ln: int) -> bool:
     if _policy_rule_line(rule, s, raw, fn, ln):
-        return
+        return True
     if add("profile ", rule.profiles, s, raw, fn, ln):
-        return
+        return True
     if s.startswith("session logging"):
         rule.session_logging = Traced(True, SourceRef(fn, ln, None, raw))
+        return True
+    return False
 
 
 def _natpolicy_dispatch(cfg: VrpConfig, rule: Optional[NatPolicyRule], s: str,
-                        raw: str, fn: str, ln: int) -> Optional[NatPolicyRule]:
+                        raw: str, fn: str, ln: int):
     if s.startswith("rule name "):
         name = s[len("rule name "):].strip()
         src = SourceRef(fn, ln, _col(raw, name), raw)
         rule = NatPolicyRule(name=Traced(name, src), source=src)
         cfg.nat_policy_rules.append(rule)
+        return rule, True
     elif rule is not None:
-        _natpolicy_rule_line(rule, s, raw, fn, ln)
-    return rule
+        return rule, _natpolicy_rule_line(rule, s, raw, fn, ln)
+    return rule, False
 
 
-def _natpolicy_rule_line(rule: NatPolicyRule, s: str, raw: str, fn: str, ln: int) -> None:
-    _policy_rule_line(rule, s, raw, fn, ln)
+def _natpolicy_rule_line(rule: NatPolicyRule, s: str, raw: str, fn: str, ln: int) -> bool:
+    return _policy_rule_line(rule, s, raw, fn, ln)
 
 
 def _open_address_set(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> AddressSet:
@@ -475,12 +506,12 @@ def _open_address_set(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Add
     return aset
 
 
-def _address_set_line(aset: AddressSet, s: str, raw: str, fn: str, ln: int) -> None:
+def _address_set_line(aset: AddressSet, s: str, raw: str, fn: str, ln: int) -> bool:
     if not s.startswith("address "):
-        return
+        return False
     rest = s[len("address "):].split()
     if not rest:
-        return
+        return True
     seq = rest[0]
     seq_src = SourceRef(fn, ln, _col(raw, seq), raw)
     member = AddressSetMember(seq=Traced(seq, seq_src), source=seq_src)
@@ -496,6 +527,7 @@ def _address_set_line(aset: AddressSet, s: str, raw: str, fn: str, ln: int) -> N
                     member.prefix_length = Traced(n, SourceRef(fn, ln, _col(raw, body[mi + 1]), raw))
         member.expression = Traced(" ".join(body), SourceRef(fn, ln, _col(raw, first), raw))
     aset.members.append(member)
+    return True
 
 
 def _open_service_set(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> ServiceSet:
@@ -512,12 +544,12 @@ def _open_service_set(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Ser
     return sset
 
 
-def _service_set_line(sset: ServiceSet, s: str, raw: str, fn: str, ln: int) -> None:
+def _service_set_line(sset: ServiceSet, s: str, raw: str, fn: str, ln: int) -> bool:
     if not s.startswith("service "):
-        return
+        return False
     rest = s[len("service "):].split()
     if not rest:
-        return
+        return True
     seq = rest[0]
     seq_src = SourceRef(fn, ln, _col(raw, seq), raw)
     item = ServiceSetItem(seq=Traced(seq, seq_src), source=seq_src)
@@ -525,6 +557,7 @@ def _service_set_line(sset: ServiceSet, s: str, raw: str, fn: str, ln: int) -> N
     if body:
         item.expression = Traced(" ".join(body), SourceRef(fn, ln, _col(raw, body[0]), raw))
     sset.items.append(item)
+    return True
 
 
 def add(prefix: str, lst: List[Traced[str]], s: str, raw: str, fn: str, ln: int) -> bool:
@@ -638,21 +671,26 @@ def _open_user_interface(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> 
     return ui
 
 
-def _user_interface_line(ui: UserInterface, s: str, raw: str, fn: str, ln: int) -> None:
+def _user_interface_line(ui: UserInterface, s: str, raw: str, fn: str, ln: int) -> bool:
     if s.startswith("protocol inbound "):
         v = s[len("protocol inbound "):].strip()
         ui.protocol_inbound.append(Traced(v, SourceRef(fn, ln, _col(raw, v), raw)))
+        return True
     elif s.startswith("acl ") and "inbound" in s:
         toks = s[len("acl "):].split()
         acl_id = toks[0] if toks else ""
         ui.acl_inbound = Traced(acl_id, SourceRef(fn, ln, _col(raw, acl_id), raw))
+        return True
     elif s.startswith("authentication-mode "):
         v = s[len("authentication-mode "):].strip()
         ui.authentication_mode = Traced(v, SourceRef(fn, ln, _col(raw, v), raw))
+        return True
     elif s.startswith("user privilege level "):
         v = s[len("user privilege level "):].strip()
         if v.isdigit():
             ui.privilege_level = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+        return True
+    return False
 
 
 def _parse_ssh_server_cipher(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
@@ -670,13 +708,13 @@ def _parse_ssh_server_cipher(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int)
             cfg.ssh_server_ciphers.append(Traced(tok, SourceRef(fn, ln, None, raw)))
 
 
-def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> bool:
     """Parse ``local-user NAME service-type TYPE [TYPE ...]`` inside the aaa block."""
     if not s.startswith("local-user "):
-        return
+        return False
     rest = s[len("local-user "):].split()
     if len(rest) < 3 or rest[1] != "service-type":
-        return
+        return True
     name_tok = rest[0]
     name_src = SourceRef(fn, ln, _col(raw, name_tok), raw)
     src = SourceRef(fn, ln, None, raw)
@@ -692,6 +730,7 @@ def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
             service_types.append(Traced(tok, SourceRef(fn, ln, None, raw)))
     cfg.local_users.append(LocalUser(name=Traced(name_tok, name_src),
                                      service_types=service_types, source=src))
+    return True
 
 
 def parse_file(path: str) -> VrpConfig:

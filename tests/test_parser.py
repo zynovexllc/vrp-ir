@@ -39,6 +39,28 @@ class TestParser(unittest.TestCase):
         self.assertEqual(cfg.interfaces[0].description.value, "上联核心")
         self.assertIn("上联核心", cfg.interfaces[0].description.source.raw)
 
+    def test_parse_text_tracks_unparsed_top_level_and_body_lines(self):
+        cfg = parse_text(
+            "sysname FW\n"
+            "unknown-security-feature enable\n"
+            "interface GigabitEthernet0/0/1\n"
+            " unknown-interface-command value\n"
+            "#\n",
+            filename="unknown.cfg",
+        )
+
+        self.assertEqual(cfg.analyzed_line_count, 4)
+        self.assertEqual([x.line for x in cfg.unparsed_lines], [2, 4])
+        self.assertIn("unknown-security-feature", cfg.unparsed_lines[0].raw)
+        self.assertIn("unknown-interface-command", cfg.unparsed_lines[1].raw)
+
+    def test_to_dict_includes_parser_coverage_inputs(self):
+        cfg = parse_text("sysname FW\nunknown-command enable\n")
+        data = cfg.to_dict()
+
+        self.assertEqual(data["analyzed_line_count"], 2)
+        self.assertEqual(data["unparsed_lines"][0]["line"], 2)
+
     def _write_temp_config(self, text: str, encoding: str) -> str:
         fd, path = tempfile.mkstemp(suffix=".cfg")
         os.close(fd)

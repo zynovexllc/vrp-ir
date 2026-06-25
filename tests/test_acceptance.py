@@ -73,6 +73,16 @@ class TestAcceptance(unittest.TestCase):
         self.assertIn("No applicable", md)
         self.assertNotIn("PASS", md)   # must not claim PASS when nothing was checked
 
+    def test_markdown_surfaces_parser_coverage(self):
+        cfg = parse_text("sysname X\nunknown-security-feature enable\n", filename="cov.cfg")
+
+        md = render_markdown(run_checks(cfg))
+
+        self.assertIn("Parser coverage", md)
+        self.assertIn("1/2 recognized (50.0%)", md)
+        self.assertIn("cov.cfg:2", md)
+        self.assertIn("unknown-security-feature enable", md)
+
     def test_clean_sample_warns_not_fails(self):
         r = run_checks(parse_file(CLEAN))
         self.assertEqual(r.result, "warn")
@@ -101,6 +111,17 @@ class TestAcceptance(unittest.TestCase):
         self.assertEqual(d["result"], "fail")
         self.assertEqual(d["counts"]["fail"], 3)
         self.assertIn("raw", d["findings"][0]["evidence"][0])
+
+    def test_to_dict_includes_parser_coverage(self):
+        cfg = parse_text("sysname X\nunknown-security-feature enable\n", filename="cov.cfg")
+
+        d = run_checks(cfg).to_dict()
+
+        self.assertEqual(d["parser_coverage"]["analyzed_lines"], 2)
+        self.assertEqual(d["parser_coverage"]["recognized_lines"], 1)
+        self.assertEqual(d["parser_coverage"]["unparsed_lines"], 1)
+        self.assertEqual(d["parser_coverage"]["coverage_percent"], 50.0)
+        self.assertEqual(d["parser_coverage"]["unparsed"][0]["line"], 2)
 
 
 if __name__ == "__main__":

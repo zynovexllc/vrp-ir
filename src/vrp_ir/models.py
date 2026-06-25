@@ -265,6 +265,8 @@ class VrpConfig:
     telnet_server_enabled: Optional[Traced[bool]] = None
     http_server_enabled: Optional[Traced[bool]] = None
     ssh_server_ciphers: List[Traced[str]] = field(default_factory=list)
+    analyzed_line_count: int = 0
+    unparsed_lines: List[SourceRef] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         """JSON-serialisable view; keeps SourceRef alongside each traced value."""
