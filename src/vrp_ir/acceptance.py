@@ -35,6 +35,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-MGMT-VTY-NO-ACL": "VTY management lines restrict inbound source with an ACL",
     "FW-SSH-WEAK-CIPHER": "SSH server does not use weak (CBC-mode / DES) ciphers",
     "FW-AAA-LOCAL-USER-TELNET": "Local AAA users are not granted the Telnet service type (cleartext)",
+    "FW-SNMP-WEAK-COMMUNITY": "SNMP community is not a default/guessable string",
 }
 
 
@@ -350,11 +351,24 @@ def _check_aaa_local_user_telnet(cfg: VrpConfig) -> Iterable[Finding]:
                 break
 
 
+def _check_snmp_weak_community(cfg: VrpConfig) -> Iterable[Finding]:
+    for community in cfg.snmp_communities:
+        if community.community is None:
+            continue
+        value = community.community.value
+        if value.lower() not in ("public", "private"):
+            continue
+        yield Finding(
+            "FW-SNMP-WEAK-COMMUNITY", "medium", "warn",
+            f"Community '{value}' ({community.access_mode.value}) is a well-known default.",
+            [community.community.source])
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
           _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
           _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher,
-          _check_aaa_local_user_telnet]
+          _check_aaa_local_user_telnet, _check_snmp_weak_community]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:

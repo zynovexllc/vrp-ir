@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of being silently hidden from acceptance reports.
 - Parsing: `info-center loghost` syslog targets, including optional
   `vpn-instance`, now carry `SourceRef` provenance.
+- Audit: `FW-SNMP-WEAK-COMMUNITY` warns on plaintext `public` / `private`
+  SNMP community strings with line-cited evidence.
 
 ### Fixed
 - Parser: `parse_file(...)` now accepts UTF-8 files with a BOM and GB18030/GBK
