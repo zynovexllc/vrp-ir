@@ -17,6 +17,8 @@ from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      VlanRange, Vrf, VrpConfig, SnmpCommunity)
 from .sourceref import SourceRef, Traced
 
+_CONFIG_ENCODINGS = ("utf-8-sig", "gb18030")
+
 
 def _mask_to_prefix(token: str) -> Optional[int]:
     token = token.strip()
@@ -693,5 +695,13 @@ def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
 
 
 def parse_file(path: str) -> VrpConfig:
-    with open(path, encoding="utf-8") as f:
-        return parse_text(f.read(), filename=path)
+    last_error: Optional[UnicodeDecodeError] = None
+    for encoding in _CONFIG_ENCODINGS:
+        try:
+            with open(path, encoding=encoding) as f:
+                return parse_text(f.read(), filename=path)
+        except UnicodeDecodeError as exc:
+            last_error = exc
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("no configuration encodings configured")
