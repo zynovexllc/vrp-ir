@@ -32,5 +32,7 @@ disclosure timeline with the reporter.
 
 When sharing a config snippet (e.g. to report a parsing bug), **de-identify it
 first** — scrub real IPs, hostnames, keys and community strings. See
-[CONTRIBUTING.md](CONTRIBUTING.md). The best bug reports use minimal, synthetic
-snippets that reproduce the issue without any real data.
+[CONTRIBUTING.md](CONTRIBUTING.md) and
+[`docs/de-identifying-configs.md`](docs/de-identifying-configs.md). The best bug
+reports use minimal, synthetic snippets that reproduce the issue without any
+real data.

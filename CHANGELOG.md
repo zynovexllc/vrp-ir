@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Distribution: published to **PyPI** — `pip install vrp-ir` (via OIDC Trusted Publishing).
+- Documentation: de-identification workflow and golden fixture convention for
+  safely sharing real-world VRP/USG parser regressions.
 - Parser coverage: parsed IR and `vrp-ir audit` reports now surface unparsed
   configuration lines and coverage counts, so unsupported commands are visible
   instead of being silently hidden from acceptance reports.

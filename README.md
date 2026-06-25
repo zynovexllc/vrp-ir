@@ -180,7 +180,9 @@ See the **[open-source vs. commercial comparison](docs/commercial.md)**.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Real (de-identified) VRP config snippets
-that we parse incorrectly make the **best** issues.
+that we parse incorrectly make the **best** issues; follow the
+[de-identification guide](docs/de-identifying-configs.md) before sharing any
+snippet publicly.
 
 ## License
 
