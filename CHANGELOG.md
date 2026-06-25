@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0](https://github.com/zynovexllc/vrp-ir/compare/v0.8.0...v0.9.0) (2026-06-25)
+
+
+### Features
+
+* **audit:** check registry (CheckSpec + registry()) ([#86](https://github.com/zynovexllc/vrp-ir/issues/86)) ([46ad6ce](https://github.com/zynovexllc/vrp-ir/commit/46ad6ce328cf2f55fabce085c0150296a7d66eab)), closes [#73](https://github.com/zynovexllc/vrp-ir/issues/73)
+* **audit:** SARIF and JUnit output formats ([#82](https://github.com/zynovexllc/vrp-ir/issues/82)) ([93bdb8b](https://github.com/zynovexllc/vrp-ir/commit/93bdb8bc8dc1b336ddacccf65d750b6b29bc17f4)), closes [#72](https://github.com/zynovexllc/vrp-ir/issues/72)
+* **cli:** vrp-ir checks and explain &lt;CHECK_ID&gt; ([#84](https://github.com/zynovexllc/vrp-ir/issues/84)) ([2680c0d](https://github.com/zynovexllc/vrp-ir/commit/2680c0dd4ad73a85b6dc073dece858d2b3dde10a)), closes [#77](https://github.com/zynovexllc/vrp-ir/issues/77)
+* parse SNMPv3 usm-user + FW-SNMP-V3 audit ([#85](https://github.com/zynovexllc/vrp-ir/issues/85)) ([507a12c](https://github.com/zynovexllc/vrp-ir/commit/507a12cd39ac42807b44aa4ee3f50a025dae67f5)), closes [#76](https://github.com/zynovexllc/vrp-ir/issues/76)
+
 ## [0.8.0](https://github.com/zynovexllc/vrp-ir/compare/v0.7.0...v0.8.0) (2026-06-25)
 
 
