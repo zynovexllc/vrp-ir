@@ -1,5 +1,6 @@
 """Tests for the v0.2 VRP parser, including SourceRef provenance assertions."""
 import os
+import tempfile
 import unittest
 
 from vrp_ir import parse_file, parse_text
@@ -15,6 +16,36 @@ class TestParser(unittest.TestCase):
     def test_header_and_hostname(self):
         self.assertEqual(self.cfg.software_version.value, "V800R012C10SPC300")
         self.assertEqual(self.cfg.hostname.value, "CORE-SW-01")  # tolerates leading space
+
+    def test_parse_file_accepts_utf8_bom(self):
+        path = self._write_temp_config("\ufeffsysname BOM-FW\n", encoding="utf-8")
+
+        cfg = parse_file(path)
+
+        self.assertEqual(cfg.hostname.value, "BOM-FW")
+
+    def test_parse_file_accepts_gb18030_chinese_config(self):
+        path = self._write_temp_config(
+            "sysname 防火墙\n"
+            "interface GigabitEthernet0/0/1\n"
+            " description 上联核心\n"
+            "#\n",
+            encoding="gb18030",
+        )
+
+        cfg = parse_file(path)
+
+        self.assertEqual(cfg.hostname.value, "防火墙")
+        self.assertEqual(cfg.interfaces[0].description.value, "上联核心")
+        self.assertIn("上联核心", cfg.interfaces[0].description.source.raw)
+
+    def _write_temp_config(self, text: str, encoding: str) -> str:
+        fd, path = tempfile.mkstemp(suffix=".cfg")
+        os.close(fd)
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        with open(path, "wb") as f:
+            f.write(text.encode(encoding))
+        return path
 
     def test_vlan_batches_with_range(self):
         spans = [(r.start, r.end) for r in self.cfg.vlan_batches]

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Distribution: published to **PyPI** — `pip install vrp-ir` (via OIDC Trusted Publishing).
 
+### Fixed
+- Parser: `parse_file(...)` now accepts UTF-8 files with a BOM and GB18030/GBK
+  Chinese configuration files instead of failing before parsing starts.
+
 ## [0.6.0] - 2026-06-16
 ### Added
 - Management-plane parsing (driven by a real-world config corpus):
