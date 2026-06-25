@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
-                     Hrp, Interface, Ipv4Address, LocalUser, NatPolicyRule,
+                     Hrp, Interface, Ipv4Address, LocalUser, LogHost, NatPolicyRule,
                      NatServer, NtpServer, SecurityRule, ServiceSet,
                      ServiceSetItem, StaticRoute, UserInterface, Vlan,
                      VlanRange, Vrf, VrpConfig, SnmpCommunity)
@@ -164,6 +164,9 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             or s.startswith("ntp unicast-server ")
         ):
             _parse_ntp_server(cfg, s, raw, filename, lineno)
+            continue
+        if s.startswith("info-center loghost "):
+            _parse_loghost(cfg, s, raw, filename, lineno)
             continue
         if s.startswith("snmp-agent community "):
             _parse_snmp_community(cfg, s, raw, filename, lineno)
@@ -383,6 +386,25 @@ def _parse_ntp_server(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> Non
 
     cfg.ntp_servers.append(NtpServer(
         address=Traced(address, src), source=src, vpn_instance=vpn))
+
+
+def _parse_loghost(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    rest = s[len("info-center loghost "):].split()
+    if not rest:
+        return
+
+    address = rest[0]
+    src = SourceRef(fn, ln, _col(raw, address), raw)
+    vpn = None
+    if "vpn-instance" in rest:
+        i = rest.index("vpn-instance")
+        if i + 1 < len(rest):
+            vpn_name = rest[i + 1]
+            vpn = Traced(vpn_name, SourceRef(fn, ln, _col(raw, vpn_name), raw))
+
+    # `facility` / `channel` and other trailing options are intentionally not
+    # modelled yet; keep only facts with clear SourceRefs.
+    cfg.log_hosts.append(LogHost(address=Traced(address, src), source=src, vpn_instance=vpn))
 
 
 def _parse_snmp_community(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
