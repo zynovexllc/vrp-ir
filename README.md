@@ -152,13 +152,26 @@ rendered report at
   telnet/http management switches; audit at 9 checks — `address-set` dereference
   in permit-scope, `address-set`-equals-any, HRP consistency, cleartext
   management (Telnet / HTTP). ✅
-- **v0.6 (now):** **management-plane access baseline** (driven by real-world
+- **v0.6:** **management-plane access baseline** (driven by real-world
   config corpus) — `user-interface` con/vty (protocol inbound / inbound ACL /
   auth mode), `ssh server cipher`, `aaa` local-users; audit grows to **13
   checks** (VTY-accepts-Telnet, VTY-no-ACL, weak-SSH-cipher, AAA-user-Telnet). ✅
-- **v0.6.x (next):** SNMP community, NTP / Syslog presence, NAT correctness,
-  `vsys`; widen the test corpus.
-- Later: Huawei security-device coverage (USG / WAF / AntiDDoS / 4A).
+- **v0.7:** GB18030/GBK config support; parser **coverage transparency**
+  (unparsed lines surfaced in the audit); `info-center loghost`; audit status
+  semantics `PASS / WARN / FAIL / NA / UNCHECKED`; checks for weak SNMP community
+  and missing NTP. ✅
+
+### What's next
+
+The forward-looking roadmap is maintained as **Now / Next / Later** (no fixed
+dates) in **[ROADMAP.md](ROADMAP.md)**. In short: **Now** — trust foundation
+(evidence policy, real de-identified corpus, richer reports, SARIF/JUnit,
+advisory standards anchoring incl. 等保 Level 3/4 *advisory* references);
+**Next** — check registry, corpus-driven parser hardening, coverage breadth;
+**Later** — a stable IR/check-id contract that defines 1.0.
+
+See **[GOVERNANCE.md](GOVERNANCE.md)** for how the project is run and the
+open-core boundary with AegisTwin.
 
 ## Commercial / support
 

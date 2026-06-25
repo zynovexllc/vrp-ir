@@ -1,7 +1,7 @@
 name: "Config parsing issue"
 description: "A Huawei VRP/USG config snippet that vrp-ir parses incorrectly (the most valuable report)."
 title: "[parse] <short description>"
-labels: ["parsing"]
+labels: ["parser"]
 body:
   - type: markdown
     attributes:
