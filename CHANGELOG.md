@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Audit: a **check registry** (`CheckSpec` + `registry()`) that pairs each check
+  function with its id, intent, and advisory references in one place. Run order
+  and output are unchanged; this is structured metadata, not a declarative DSL.
 - Parsing: SNMPv3 `snmp-agent sys-info version` and `snmp-agent usm-user v3`
   (auth/privacy modes, multi-line merge) with `SourceRef`.
 - Audit: `FW-SNMP-V3` warns when SNMP v1/v2c is enabled or a v3 user is missing
