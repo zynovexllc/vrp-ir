@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- CLI: `vrp-ir audit --format sarif` and `--format junit` for CI integration —
+  SARIF 2.1.0 (GitHub/GitLab code scanning, with the cited source line as the
+  result location) and JUnit XML (red/green gating aligned with `--strict`).
 - Audit: **advisory standards anchoring** (`StandardRef`). Findings can carry
   level-aware advisory references (等保 三级/四级 alongside CIS-style / Huawei
   hardening) describing the **control domain only** — no fabricated clause

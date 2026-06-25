@@ -1,6 +1,6 @@
 """vrp-ir: source-traceable structured IR for Huawei VRP configurations."""
 from .acceptance import (AcceptanceReport, Finding, StandardRef,
-                         render_markdown, run_checks)
+                         render_junit, render_markdown, render_sarif, run_checks)
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LogHost, NatPolicyRule, NatServer,
                      NtpServer, SecurityRule, ServiceSet, ServiceSetItem,
@@ -15,7 +15,8 @@ __all__ = [
     "FirewallZone", "SecurityRule", "NatPolicyRule", "NatServer",
     "NtpServer", "LogHost", "SnmpCommunity", "Hrp", "AddressSet", "AddressSetMember",
     "ServiceSet", "ServiceSetItem",
-    "run_checks", "render_markdown", "AcceptanceReport", "Finding", "StandardRef",
+    "run_checks", "render_markdown", "render_sarif", "render_junit",
+    "AcceptanceReport", "Finding", "StandardRef",
     "SourceRef", "Traced",
 ]
 __version__ = "0.8.0"  # x-release-please-version
