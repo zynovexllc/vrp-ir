@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Audit: **advisory standards anchoring** (`StandardRef`). Findings can carry
+  level-aware advisory references (等保 三级/四级 alongside CIS-style / Huawei
+  hardening) describing the **control domain only** — no fabricated clause
+  numbers, `manual_verified: false` pending expert review, and rendered with an
+  explicit "not a certification claim" disclaimer. See
+  [`docs/standards-mapping.md`](docs/standards-mapping.md).
 - Tests: a **golden corpus** of de-identified fixtures with hand-authored
   `*.expected.json` ground truth and a **zero-false-negative** regression gate
   (`tests/test_golden_corpus.py`) — required high-severity findings must keep

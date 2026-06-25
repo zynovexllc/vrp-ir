@@ -41,6 +41,24 @@ CHECKS_META: Dict[str, str] = {
 }
 
 
+@dataclass(frozen=True)
+class StandardRef:
+    """An **advisory** reference linking a check to a publicly citable control.
+
+    This is never a certification or compliance claim. ``control`` is a
+    control-domain description (e.g. "encrypted remote management"), **not** a
+    fabricated clause number. For frameworks like 等保 (MLPS), ``level`` records
+    the grading (e.g. "三级" / "四级"). A mapping is only treated as definitive
+    once a human verifies it against the standard text (``manual_verified``).
+    """
+    framework: str                     # e.g. "等保", "CIS-style", "Huawei-hardening"
+    control: str                       # control-domain description (NOT a clause id)
+    level: Optional[str] = None        # e.g. "三级" / "四级" for 等保
+    advisory_only: bool = True
+    manual_verified: bool = False
+    note: Optional[str] = None
+
+
 @dataclass
 class Finding:
     """One acceptance test-case result, citing its source evidence.
@@ -64,7 +82,7 @@ class Finding:
     evidence: List[SourceRef] = field(default_factory=list)
     confidence: str = "high"          # high | medium | low
     rationale: Optional[str] = None   # basis when there is no single line to cite
-    references: List[str] = field(default_factory=list)  # advisory refs (see #70)
+    references: List["StandardRef"] = field(default_factory=list)  # advisory (see #70)
 
     def __post_init__(self) -> None:
         # "No source, no claim": an asserting status with no cited evidence must
@@ -158,7 +176,10 @@ class AcceptanceReport:
                 "detail": f.detail,
                 "confidence": f.confidence,
                 "rationale": f.rationale,
-                "references": list(f.references),
+                "references": [{"framework": r.framework, "control": r.control,
+                                "level": r.level, "advisory_only": r.advisory_only,
+                                "manual_verified": r.manual_verified, "note": r.note}
+                               for r in f.references],
                 "evidence": [{"file": e.file, "line": e.line, "col": e.col,
                               "raw": e.raw.strip() if e.raw else None}
                              for e in f.evidence],
@@ -459,6 +480,41 @@ def _check_ntp_missing(cfg: VrpConfig) -> Iterable[Finding]:
                   "parsed in a config that otherwise has device-level facts.")
 
 
+def _dengbao(control: str) -> List[StandardRef]:
+    # 等保 (MLPS) is graded by level; Level 3 is the common acceptance bar, Level 4
+    # is critical infrastructure. These are advisory control-domain descriptions —
+    # NOT clause numbers — and remain manual_verified=False pending expert review.
+    return [StandardRef("等保", control, level="三级"),
+            StandardRef("等保", control, level="四级")]
+
+
+# Advisory mapping: check id -> publicly citable control domains. Advisory only,
+# never a certification claim; clause numbers are intentionally absent until a
+# human verifies them against the standard text.
+CHECK_REFERENCES: Dict[str, List[StandardRef]] = {
+    "FW-DEFAULT-DENY": _dengbao("访问控制：默认拒绝未匹配流量") + [
+        StandardRef("CIS-style", "Default-deny on unmatched traffic")],
+    "FW-PERMIT-SCOPE": _dengbao("访问控制：按最小权限收敛放通范围") + [
+        StandardRef("CIS-style", "Least-privilege permit rules")],
+    "FW-MGMT-TELNET": _dengbao("远程管理：禁用明文管理协议") + [
+        StandardRef("Huawei-hardening", "Disable Telnet; use STelnet/SSH")],
+    "FW-MGMT-HTTP": _dengbao("远程管理：禁用明文管理协议") + [
+        StandardRef("Huawei-hardening", "Disable HTTP; use HTTPS")],
+    "FW-MGMT-VTY-TELNET": _dengbao("远程管理：管理线路仅用加密协议") + [
+        StandardRef("Huawei-hardening", "VTY protocol inbound ssh only")],
+    "FW-MGMT-VTY-NO-ACL": _dengbao("远程管理：限制管理访问源地址") + [
+        StandardRef("CIS-style", "Restrict management-plane source addresses")],
+    "FW-SSH-WEAK-CIPHER": _dengbao("密码算法：禁用弱加密算法") + [
+        StandardRef("CIS-style", "Disable CBC-mode/DES ciphers; use CTR/GCM")],
+    "FW-SNMP-WEAK-COMMUNITY": _dengbao("凭据安全：禁用默认/弱 SNMP 团体字") + [
+        StandardRef("CIS-style", "No default SNMP community strings")],
+    "FW-AAA-LOCAL-USER-TELNET": _dengbao("身份鉴别：账户不授予明文服务") + [
+        StandardRef("Huawei-hardening", "Do not grant Telnet service-type")],
+    "FW-NTP-MISSING": _dengbao("时间同步：配置可信 NTP 以保证日志可追溯") + [
+        StandardRef("CIS-style", "Configure trusted NTP for log correlation")],
+}
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
           _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
@@ -482,6 +538,10 @@ def run_checks(cfg: VrpConfig) -> AcceptanceReport:
             list(cfg.unparsed_lines)))
     for check in CHECKS:
         report.findings.extend(check(cfg))
+    for f in report.findings:
+        refs = CHECK_REFERENCES.get(f.check_id)
+        if refs:
+            f.references = list(refs)
     report.findings.sort(key=lambda f: (_STATUS_ORDER.get(f.status, 9),
                                         SEVERITY_ORDER.get(f.severity, 9)))
     return report
@@ -528,12 +588,25 @@ def render_markdown(report: AcceptanceReport) -> str:
         if f.rationale:
             out += [f"_Basis: {f.rationale}_"]
         if f.references:
-            out += ["", "**Advisory references**: " + ", ".join(f.references)]
+            out += ["", "**Advisory references** (not a certification claim):"]
+            for r in f.references:
+                lvl = f" {r.level}" if r.level else ""
+                verified = "" if r.manual_verified else " — unverified mapping"
+                out.append(f"- {r.framework}{lvl}: {r.control}{verified}")
         if f.evidence:
             out += ["", "**Evidence**:"]
             for e in f.evidence:
                 snippet = f" — `{e.raw.strip()}`" if e.raw else ""
                 out.append(f"- `{e.file}:{e.line}`{snippet}")
+    if any(f.references for f in report.findings):
+        out += [
+            "",
+            "---",
+            "",
+            "_Advisory references map findings to publicly citable control domains. "
+            "They are **not** a compliance certification; mappings marked "
+            "'unverified' await manual review against the standard text._",
+        ]
     return "\n".join(out) + "\n"
 
 
