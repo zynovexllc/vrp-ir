@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Parsing: SNMPv3 `snmp-agent sys-info version` and `snmp-agent usm-user v3`
+  (auth/privacy modes, multi-line merge) with `SourceRef`.
+- Audit: `FW-SNMP-V3` warns when SNMP v1/v2c is enabled or a v3 user is missing
+  authentication or privacy, with advisory standard references.
 - CLI: `vrp-ir checks` lists every audit check (id + intent), and
   `vrp-ir explain <CHECK_ID>` prints a check's intent and its advisory
   references — making the catalogue self-describing.

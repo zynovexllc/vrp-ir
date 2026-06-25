@@ -14,7 +14,7 @@ from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LocalUser, LogHost, NatPolicyRule,
                      NatServer, NtpServer, SecurityRule, ServiceSet,
                      ServiceSetItem, StaticRoute, UserInterface, Vlan,
-                     VlanRange, Vrf, VrpConfig, SnmpCommunity)
+                     VlanRange, Vrf, VrpConfig, SnmpCommunity, SnmpUsmUser)
 from .sourceref import SourceRef, Traced
 
 _CONFIG_ENCODINGS = ("utf-8-sig", "gb18030")
@@ -170,6 +170,12 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
         if s.startswith("snmp-agent community "):
             _parse_snmp_community(cfg, s, raw, filename, lineno)
+            continue
+        if s.startswith("snmp-agent sys-info version "):
+            _parse_snmp_version(cfg, s, raw, filename, lineno)
+            continue
+        if s.startswith("snmp-agent usm-user v3 "):
+            _parse_snmp_usm_user(cfg, s, raw, filename, lineno)
             continue
         if s.startswith("nat server "):
             _parse_nat_server(cfg, s, raw, filename, lineno)
@@ -427,6 +433,34 @@ def _parse_snmp_community(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) ->
         community=community,
         encrypted=encrypted,
     ))
+
+
+def _parse_snmp_version(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    for tok in s[len("snmp-agent sys-info version "):].split():
+        cfg.snmp_versions.append(Traced(tok, SourceRef(fn, ln, _col(raw, tok), raw)))
+
+
+def _parse_snmp_usm_user(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> None:
+    rest = s[len("snmp-agent usm-user v3 "):].split()
+    if not rest:
+        return
+    name = rest[0]
+    user = next((u for u in cfg.snmp_usm_users if u.name.value == name), None)
+    if user is None:
+        src = SourceRef(fn, ln, _col(raw, name), raw)
+        user = SnmpUsmUser(name=Traced(name, src), source=src)
+        cfg.snmp_usm_users.append(user)
+    # auth/privacy may appear on this line or a later line for the same user.
+    if "authentication-mode" in rest:
+        i = rest.index("authentication-mode")
+        if i + 1 < len(rest):
+            mode = rest[i + 1]
+            user.auth_mode = Traced(mode, SourceRef(fn, ln, _col(raw, mode), raw))
+    if "privacy-mode" in rest:
+        i = rest.index("privacy-mode")
+        if i + 1 < len(rest):
+            mode = rest[i + 1]
+            user.privacy_mode = Traced(mode, SourceRef(fn, ln, _col(raw, mode), raw))
 
 
 def _open_zone(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> FirewallZone:

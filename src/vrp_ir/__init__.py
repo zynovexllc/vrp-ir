@@ -5,7 +5,7 @@ from .acceptance import (AcceptanceReport, Finding, StandardRef,
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LogHost, NatPolicyRule, NatServer,
                      NtpServer, SecurityRule, ServiceSet, ServiceSetItem,
-                     SnmpCommunity, StaticRoute, Vlan, VlanRange, Vrf,
+                     SnmpCommunity, SnmpUsmUser, StaticRoute, Vlan, VlanRange, Vrf,
                      VrpConfig)
 from .parser import parse_file, parse_text
 from .sourceref import SourceRef, Traced
@@ -14,8 +14,8 @@ __all__ = [
     "parse_text", "parse_file", "VrpConfig", "Interface", "Ipv4Address",
     "Vlan", "VlanRange", "Vrf", "Acl", "AclRule", "StaticRoute",
     "FirewallZone", "SecurityRule", "NatPolicyRule", "NatServer",
-    "NtpServer", "LogHost", "SnmpCommunity", "Hrp", "AddressSet", "AddressSetMember",
-    "ServiceSet", "ServiceSetItem",
+    "NtpServer", "LogHost", "SnmpCommunity", "SnmpUsmUser", "Hrp", "AddressSet",
+    "AddressSetMember", "ServiceSet", "ServiceSetItem",
     "run_checks", "render_markdown", "render_sarif", "render_junit",
     "list_checks", "explain_check",
     "AcceptanceReport", "Finding", "StandardRef",
