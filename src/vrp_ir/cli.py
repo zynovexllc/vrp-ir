@@ -1,8 +1,9 @@
 """Command-line interface: ``vrp-ir parse <config>`` / ``vrp-ir audit <config>``.
 
 ``parse`` outputs the parsed IR as JSON (every value carries its SourceRef);
-``audit`` runs security acceptance checks and prints a report (Markdown or JSON)
-in which every finding cites the exact source line it is based on.
+``audit`` runs security acceptance checks and prints a report (Markdown, JSON,
+SARIF, or JUnit) in which every finding cites the exact source line it is based
+on.
 """
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ import argparse
 import json
 import sys
 
-from .acceptance import render_markdown, run_checks
+from .acceptance import render_junit, render_markdown, render_sarif, run_checks
 from .parser import parse_file
 
 
@@ -27,8 +28,8 @@ def main(argv=None) -> int:
 
     pa = sub.add_parser("audit", help="Run security acceptance checks on a config.")
     pa.add_argument("config", help="Path to a VRP/USG configuration file.")
-    pa.add_argument("--format", choices=["md", "json"], default="md",
-                    help="Report format (default: md).")
+    pa.add_argument("--format", choices=["md", "json", "sarif", "junit"],
+                    default="md", help="Report format (default: md).")
     pa.add_argument("--strict", action="store_true",
                     help="Exit non-zero if any check fails (CI gate).")
 
@@ -44,6 +45,10 @@ def main(argv=None) -> int:
         if args.format == "json":
             json.dump(report.to_dict(), sys.stdout, ensure_ascii=False, indent=2)
             sys.stdout.write("\n")
+        elif args.format == "sarif":
+            sys.stdout.write(render_sarif(report))
+        elif args.format == "junit":
+            sys.stdout.write(render_junit(report))
         else:
             sys.stdout.write(render_markdown(report))
         return 1 if (args.strict and report.result == "fail") else 0

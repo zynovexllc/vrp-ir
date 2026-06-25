@@ -104,6 +104,8 @@ is based on — so a reviewer jumps straight to the offending line.
 ```bash
 vrp-ir audit examples/sample-usg-risky.cfg            # Markdown acceptance report
 vrp-ir audit examples/sample-usg.cfg --format json    # machine-readable JSON
+vrp-ir audit examples/sample-usg-risky.cfg --format sarif  # SARIF 2.1.0 (code scanning)
+vrp-ir audit examples/sample-usg-risky.cfg --format junit  # JUnit XML (CI gating)
 vrp-ir audit examples/sample-usg-risky.cfg --strict   # exit 1 if any check fails (CI gate)
 ```
 

@@ -10,6 +10,8 @@ Zero runtime dependencies; Markdown / JSON rendering.
 """
 from __future__ import annotations
 
+import json
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
@@ -645,3 +647,88 @@ def _coverage_limitations(report: AcceptanceReport) -> List[str]:
         for f in not_asserted:
             out.append(f"- `{f.check_id}` [{f.status.upper()}] — {f.detail}")
     return out
+
+
+_SARIF_LEVEL = {"fail": "error", "warn": "warning", "unchecked": "note"}
+
+
+def render_sarif(report: AcceptanceReport) -> str:
+    """Render the report as SARIF 2.1.0 for CI code scanning.
+
+    Only asserting problems (fail/warn) and coverage gaps (unchecked) become
+    results; pass/na make no problem claim. Each result locates the exact source
+    line when one is cited.
+    """
+    from . import __version__ as version
+
+    rules = [{"id": cid, "name": cid, "shortDescription": {"text": intent}}
+             for cid, intent in CHECKS_META.items()]
+    results = []
+    for f in report.findings:
+        if f.status not in _SARIF_LEVEL:
+            continue
+        physical = {"artifactLocation": {"uri": report.source_file}}
+        lines = [e.line for e in f.evidence if e.line]
+        if lines:
+            physical["region"] = {"startLine": lines[0]}
+        results.append({
+            "ruleId": f.check_id,
+            "level": _SARIF_LEVEL[f.status],
+            "message": {"text": f.detail},
+            "locations": [{"physicalLocation": physical}],
+            "properties": {"severity": f.severity, "status": f.status,
+                           "confidence": f.confidence},
+        })
+    doc = {
+        "version": "2.1.0",
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "runs": [{
+            "tool": {"driver": {
+                "name": "vrp-ir",
+                "informationUri": "https://github.com/zynovexllc/vrp-ir",
+                "version": version,
+                "rules": rules,
+            }},
+            "results": results,
+        }],
+    }
+    return json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
+
+
+def render_junit(report: AcceptanceReport) -> str:
+    """Render the report as JUnit XML.
+
+    Aligns with ``--strict``: only ``fail`` becomes a JUnit ``<failure>``;
+    ``warn`` passes (noted in system-out); ``na``/``unchecked`` are skipped.
+    """
+    findings = report.findings
+    failures = sum(1 for f in findings if f.status == "fail")
+    skipped = sum(1 for f in findings if f.status in ("na", "unchecked"))
+    suite = ET.Element("testsuite", {
+        "name": "vrp-ir audit",
+        "tests": str(len(findings)),
+        "failures": str(failures),
+        "errors": "0",
+        "skipped": str(skipped),
+    })
+    seen: Dict[str, int] = {}
+    for f in findings:
+        n = seen.get(f.check_id, 0)
+        seen[f.check_id] = n + 1
+        name = f.check_id if n == 0 else f"{f.check_id}#{n + 1}"
+        tc = ET.SubElement(suite, "testcase",
+                           {"classname": "vrp-ir.audit", "name": name})
+        evidence = "; ".join(f"{e.file}:{e.line}" for e in f.evidence if e.line)
+        msg = f.detail + (f" [{evidence}]" if evidence else "")
+        if f.status == "fail":
+            fail = ET.SubElement(tc, "failure",
+                                 {"message": f.detail, "type": f.severity})
+            fail.text = msg
+        elif f.status in ("na", "unchecked"):
+            ET.SubElement(tc, "skipped", {"message": f.status})
+        elif f.status == "warn":
+            so = ET.SubElement(tc, "system-out")
+            so.text = f"WARN: {msg}"
+    suites = ET.Element("testsuites")
+    suites.append(suite)
+    return ET.tostring(suites, encoding="unicode") + "\n"
