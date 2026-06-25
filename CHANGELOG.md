@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/zynovexllc/vrp-ir/compare/v0.6.0...v0.7.0) (2026-06-25)
+
+
+### Features
+
+* **audit:** add NA and unchecked statuses ([#57](https://github.com/zynovexllc/vrp-ir/issues/57)) ([c103cb0](https://github.com/zynovexllc/vrp-ir/commit/c103cb02a5e2a1eb4ac95abde3d5365ae2ad64e0))
+* **audit:** flag missing NTP servers ([#58](https://github.com/zynovexllc/vrp-ir/issues/58)) ([414740b](https://github.com/zynovexllc/vrp-ir/commit/414740b0e21ca957a293c1f9f59dddf7e5b7bc24))
+* **audit:** flag weak SNMP communities ([#56](https://github.com/zynovexllc/vrp-ir/issues/56)) ([ef7bad8](https://github.com/zynovexllc/vrp-ir/commit/ef7bad8dc3a9a3acb51453af5b3693384ba01802))
+* **parser:** parse info-center loghost ([#55](https://github.com/zynovexllc/vrp-ir/issues/55)) ([59a1cdf](https://github.com/zynovexllc/vrp-ir/commit/59a1cdfd28a32ad8323a49ca3bf15847a8adb454))
+* **parser:** surface unparsed config lines ([#54](https://github.com/zynovexllc/vrp-ir/issues/54)) ([ff0df69](https://github.com/zynovexllc/vrp-ir/commit/ff0df69a3ef58c77c18ba4d3cb41982677ff7f60))
+
+
+### Bug Fixes
+
+* **parser:** accept GB18030 Huawei config files ([#49](https://github.com/zynovexllc/vrp-ir/issues/49)) ([a02f48d](https://github.com/zynovexllc/vrp-ir/commit/a02f48da4c8c4fd155a351489c37288dda13dd39))
+
+
+### Documentation
+
+* add config de-identification workflow ([#59](https://github.com/zynovexllc/vrp-ir/issues/59)) ([48cb72a](https://github.com/zynovexllc/vrp-ir/commit/48cb72a7bddf8f6711d5d05f5748616f3478f1f5))
+* add social-preview (OG) card + reproducible generator ([#42](https://github.com/zynovexllc/vrp-ir/issues/42)) ([1e784aa](https://github.com/zynovexllc/vrp-ir/commit/1e784aae6211f4e267c52248881a411b40705e70))
+* add terminal demo GIF to README (parse provenance + line-cited audit) ([#36](https://github.com/zynovexllc/vrp-ir/issues/36)) ([356185d](https://github.com/zynovexllc/vrp-ir/commit/356185dbd3cb9e95c793d4ad545445479ce68263))
+* document release and PyPI process ([#60](https://github.com/zynovexllc/vrp-ir/issues/60)) ([9adb311](https://github.com/zynovexllc/vrp-ir/commit/9adb311345d9a9059db202364464629af3d41048))
+* open-source hygiene (CHANGELOG, SECURITY, CoC, issue/PR templates, README badges) ([#31](https://github.com/zynovexllc/vrp-ir/issues/31)) ([2460e55](https://github.com/zynovexllc/vrp-ir/commit/2460e5514b7b92a60c95f90a1877bf7fb8727108))
+* refine commercial positioning (trivy-style open-core CTA + comparison page) ([#35](https://github.com/zynovexllc/vrp-ir/issues/35)) ([54e843e](https://github.com/zynovexllc/vrp-ir/commit/54e843ed02b15bfff7a291cc8505f07e92fd9b0f))
+* vrp-ir is live on PyPI (pip install vrp-ir + PyPI badges) ([#34](https://github.com/zynovexllc/vrp-ir/issues/34)) ([4174aee](https://github.com/zynovexllc/vrp-ir/commit/4174aee52106d4104f3bf68c0abe12125bc6fba5))
+
 ## [Unreleased]
 ### Added
 - Distribution: published to **PyPI** — `pip install vrp-ir` (via OIDC Trusted Publishing).

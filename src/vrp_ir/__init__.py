@@ -17,4 +17,4 @@ __all__ = [
     "run_checks", "render_markdown", "AcceptanceReport", "Finding",
     "SourceRef", "Traced",
 ]
-__version__ = "0.6.0"  # x-release-please-version
+__version__ = "0.7.0"  # x-release-please-version
