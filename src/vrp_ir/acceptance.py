@@ -11,7 +11,7 @@ Zero runtime dependencies; Markdown / JSON rendering.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 from .models import AddressSet, VrpConfig
 from .sourceref import SourceRef
@@ -43,12 +43,37 @@ CHECKS_META: Dict[str, str] = {
 
 @dataclass
 class Finding:
-    """One acceptance test-case result, citing its source evidence."""
+    """One acceptance test-case result, citing its source evidence.
+
+    Evidence policy ("no source, no claim"): a finding with an asserting status
+    (``pass`` / ``warn`` / ``fail``) must be backed by **either** a cited source
+    line (``evidence``) **or** a documented ``rationale`` (for absence/implicit
+    findings that legitimately have no single line to cite). ``na`` / ``unchecked``
+    make no claim and may have neither.
+
+    - ``confidence`` reflects how certain the conclusion is: ``high`` for findings
+      backed by a parsed source line, ``low`` for absence/implicit-default
+      findings, ``medium`` in between.
+    - ``references`` carries advisory standard references (populated later); it is
+      never a certification claim.
+    """
     check_id: str
     severity: str            # critical | high | medium | low | info
     status: str              # pass | warn | fail | na | unchecked
     detail: str
     evidence: List[SourceRef] = field(default_factory=list)
+    confidence: str = "high"          # high | medium | low
+    rationale: Optional[str] = None   # basis when there is no single line to cite
+    references: List[str] = field(default_factory=list)  # advisory refs (see #70)
+
+    def __post_init__(self) -> None:
+        # "No source, no claim": an asserting status with no cited evidence must
+        # document its basis, so we never surface a bare, unbacked claim.
+        if self.status in ("pass", "warn", "fail") and not self.evidence \
+                and not self.rationale:
+            raise ValueError(
+                f"{self.check_id}: a '{self.status}' finding without evidence "
+                "must provide a rationale (no source, no claim)")
 
     @property
     def title(self) -> str:
@@ -112,6 +137,9 @@ class AcceptanceReport:
                 "status": f.status,
                 "title": f.title,
                 "detail": f.detail,
+                "confidence": f.confidence,
+                "rationale": f.rationale,
+                "references": list(f.references),
                 "evidence": [{"file": e.file, "line": e.line, "col": e.col,
                               "raw": e.raw.strip() if e.raw else None}
                              for e in f.evidence],
@@ -137,11 +165,18 @@ def _check_default_deny(cfg: VrpConfig) -> Iterable[Finding]:
             "Default action is 'permit': all traffic matching no rule is allowed "
             "(permit-any).",
             [da.source])
+    elif da is not None:
+        yield Finding(
+            "FW-DEFAULT-DENY", "critical", "pass",
+            "Traffic matching no rule is denied by default.",
+            [da.source])
     else:
         yield Finding(
             "FW-DEFAULT-DENY", "critical", "pass",
             "Traffic matching no rule is denied by default.",
-            [da.source] if da is not None else [])
+            [], confidence="low",
+            rationale="No explicit 'default action' was parsed; relies on the "
+                      "VRP security-policy implicit deny-by-default.")
 
 
 def _addr_set_resolves_to_any(name: str, addr_sets_by_name: Dict[str, "AddressSet"]) -> bool:
@@ -400,7 +435,9 @@ def _check_ntp_missing(cfg: VrpConfig) -> Iterable[Finding]:
         "FW-NTP-MISSING", "medium", "fail",
         "No NTP server is configured; device time is unsynchronised, weakening "
         "log correlation and audit evidence.",
-        [])
+        [], confidence="low",
+        rationale="Absence finding: no 'ntp-service unicast-server' line was "
+                  "parsed in a config that otherwise has device-level facts.")
 
 
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
@@ -466,6 +503,12 @@ def render_markdown(report: AcceptanceReport) -> str:
             "",
             f.detail,
         ]
+        if f.status in ("pass", "warn", "fail"):
+            out += ["", f"_Confidence: {f.confidence}._"]
+        if f.rationale:
+            out += [f"_Basis: {f.rationale}_"]
+        if f.references:
+            out += ["", "**Advisory references**: " + ", ".join(f.references)]
         if f.evidence:
             out += ["", "**Evidence**:"]
             for e in f.evidence:

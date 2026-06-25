@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Audit: an explicit **evidence policy** ("no source, no claim"). Findings now
+  carry `confidence`, `rationale`, and an (advisory) `references` slot; an
+  asserting `pass`/`warn`/`fail` finding without a cited source line must document
+  its basis (absence/implicit-default findings are marked low-confidence with a
+  rationale instead of an unbacked claim).
 - Documentation: published a **Now / Next / Later** [`ROADMAP.md`](ROADMAP.md)
   and a [`GOVERNANCE.md`](GOVERNANCE.md) describing project scope, the PR
   acceptance bar, and the open-core boundary with AegisTwin.
