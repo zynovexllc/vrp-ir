@@ -69,6 +69,16 @@ Before a release:
 - Any parser/audit behavior change is represented by tests with `SourceRef`
   assertions where applicable.
 
+## Updating pinned GitHub Actions
+
+Workflows pin actions by commit SHA, with the upstream tag kept as a comment. To
+upgrade an action:
+
+1. Resolve the new tag or branch to a commit SHA.
+2. Update the workflow `uses:` line and keep the human-readable tag comment.
+3. Open a PR and wait for CI.
+4. Do not switch back to floating tags such as `@v4`.
+
 ## Publishing expectation
 
 PyPI is a public distribution channel. Publishing a release should be treated as
