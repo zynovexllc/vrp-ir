@@ -100,6 +100,20 @@ class SnmpCommunity:
 
 
 @dataclass
+class SnmpUsmUser:
+    """An SNMPv3 USM user (``snmp-agent usm-user v3 <name> ...``).
+
+    Acceptance wants v3 users to use both authentication and privacy. Lines for
+    the same user may appear separately, so auth/privacy modes are optional and
+    merged as they are parsed.
+    """
+    name: Traced[str]
+    source: SourceRef
+    auth_mode: Optional[Traced[str]] = None     # e.g. sha2-256 / sha / md5
+    privacy_mode: Optional[Traced[str]] = None  # e.g. aes128 / des56
+
+
+@dataclass
 class Interface:
     name: Traced[str]
     source: SourceRef
@@ -260,6 +274,8 @@ class VrpConfig:
     ntp_servers: List[NtpServer] = field(default_factory=list)
     log_hosts: List[LogHost] = field(default_factory=list)
     snmp_communities: List[SnmpCommunity] = field(default_factory=list)
+    snmp_versions: List[Traced[str]] = field(default_factory=list)
+    snmp_usm_users: List[SnmpUsmUser] = field(default_factory=list)
     firewall_zones: List[FirewallZone] = field(default_factory=list)
     security_rules: List[SecurityRule] = field(default_factory=list)
     security_default_action: Optional[Traced[str]] = None  # policy-level `default action`

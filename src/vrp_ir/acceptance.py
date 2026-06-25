@@ -39,6 +39,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-SSH-WEAK-CIPHER": "SSH server does not use weak (CBC-mode / DES) ciphers",
     "FW-AAA-LOCAL-USER-TELNET": "Local AAA users are not granted the Telnet service type (cleartext)",
     "FW-SNMP-WEAK-COMMUNITY": "SNMP community is not a default/guessable string",
+    "FW-SNMP-V3": "SNMP uses v3 with authentication and privacy (no v1/v2c)",
     "FW-NTP-MISSING": "At least one NTP server is configured",
 }
 
@@ -453,6 +454,28 @@ def _check_snmp_weak_community(cfg: VrpConfig) -> Iterable[Finding]:
             [community.community.source])
 
 
+def _check_snmp_v3(cfg: VrpConfig) -> Iterable[Finding]:
+    for version in cfg.snmp_versions:
+        if version.value.lower() in ("v1", "v2c"):
+            yield Finding(
+                "FW-SNMP-V3", "medium", "warn",
+                f"SNMP {version.value} is enabled; use SNMPv3 with authentication "
+                f"and privacy instead of v1/v2c.",
+                [version.source])
+    for user in cfg.snmp_usm_users:
+        if user.auth_mode is None or user.privacy_mode is None:
+            missing = []
+            if user.auth_mode is None:
+                missing.append("authentication")
+            if user.privacy_mode is None:
+                missing.append("privacy")
+            yield Finding(
+                "FW-SNMP-V3", "medium", "warn",
+                f"SNMPv3 user '{user.name.value}' is missing {' and '.join(missing)}; "
+                f"v3 users should configure both auth and privacy.",
+                [user.source])
+
+
 def _has_device_acceptance_scope(cfg: VrpConfig) -> bool:
     """Return True when the parsed config has enough device facts for absence checks."""
     return bool(
@@ -510,6 +533,8 @@ CHECK_REFERENCES: Dict[str, List[StandardRef]] = {
         StandardRef("CIS-style", "Disable CBC-mode/DES ciphers; use CTR/GCM")],
     "FW-SNMP-WEAK-COMMUNITY": _dengbao("凭据安全：禁用默认/弱 SNMP 团体字") + [
         StandardRef("CIS-style", "No default SNMP community strings")],
+    "FW-SNMP-V3": _dengbao("SNMP 安全：使用 v3 鉴别与加密，禁用 v1/v2c") + [
+        StandardRef("CIS-style", "Use SNMPv3 with auth+privacy; disable v1/v2c")],
     "FW-AAA-LOCAL-USER-TELNET": _dengbao("身份鉴别：账户不授予明文服务") + [
         StandardRef("Huawei-hardening", "Do not grant Telnet service-type")],
     "FW-NTP-MISSING": _dengbao("时间同步：配置可信 NTP 以保证日志可追溯") + [
@@ -522,7 +547,7 @@ CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
           _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher,
           _check_aaa_local_user_telnet, _check_snmp_weak_community,
-          _check_ntp_missing]
+          _check_snmp_v3, _check_ntp_missing]
 
 
 def list_checks() -> List[Dict[str, str]]:
