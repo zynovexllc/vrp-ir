@@ -71,12 +71,19 @@ Acceptance checks live in `src/vrp_ir/acceptance.py`. A good check:
   surface something partial/wrong.
 - **Keep the core dependency-free.**
 
+## Releases
+
+Merging to `main` does not publish to PyPI. Releases are maintainer-approved and
+go through the process documented in [`docs/release-process.md`](docs/release-process.md).
+
 ## Project files
 
 - [`CHANGELOG.md`](CHANGELOG.md) — version history (Keep a Changelog).
 - [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately.
 - [`docs/de-identifying-configs.md`](docs/de-identifying-configs.md) — how to
   safely share minimal VRP/USG snippets.
+- [`docs/release-process.md`](docs/release-process.md) — maintainer release and
+  PyPI publishing flow.
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant.
 - Issue templates (Config parsing / Bug / Feature) and a PR checklist live under
   [`.github/`](.github/).
