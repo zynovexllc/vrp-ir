@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/zynovexllc/vrp-ir/compare/v0.7.0...v0.8.0) (2026-06-25)
+
+
+### Features
+
+* **audit:** advisory standards anchoring (level-aware refs) ([#81](https://github.com/zynovexllc/vrp-ir/issues/81)) ([60dbc75](https://github.com/zynovexllc/vrp-ir/commit/60dbc759abf5a68e469070f02db4a4a1922d5d08)), closes [#70](https://github.com/zynovexllc/vrp-ir/issues/70)
+* **audit:** coverage & limitations transparency ([#79](https://github.com/zynovexllc/vrp-ir/issues/79)) ([ad9ccf0](https://github.com/zynovexllc/vrp-ir/commit/ad9ccf00f6570509fe201ec8fa0de33842091047)), closes [#71](https://github.com/zynovexllc/vrp-ir/issues/71)
+* **audit:** evidence policy (no source, no claim) ([#78](https://github.com/zynovexllc/vrp-ir/issues/78)) ([701a4df](https://github.com/zynovexllc/vrp-ir/commit/701a4df63d1be02366e80b5e4be35ccd878f6db5)), closes [#68](https://github.com/zynovexllc/vrp-ir/issues/68)
+
+
+### Documentation
+
+* add ROADMAP and GOVERNANCE ([#63](https://github.com/zynovexllc/vrp-ir/issues/63)) ([e414ba6](https://github.com/zynovexllc/vrp-ir/commit/e414ba61f26398a82bd1575ed411e4cfc12a69dd))
+
 ## [0.7.0](https://github.com/zynovexllc/vrp-ir/compare/v0.6.0...v0.7.0) (2026-06-25)
 
 
