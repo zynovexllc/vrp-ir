@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Documentation: published a **Now / Next / Later** [`ROADMAP.md`](ROADMAP.md)
+  and a [`GOVERNANCE.md`](GOVERNANCE.md) describing project scope, the PR
+  acceptance bar, and the open-core boundary with AegisTwin.
 - Distribution: published to **PyPI** — `pip install vrp-ir` (via OIDC Trusted Publishing).
 - Documentation: de-identification workflow and golden fixture convention for
   safely sharing real-world VRP/USG parser regressions.

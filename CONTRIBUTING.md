@@ -28,7 +28,7 @@ won't be blocked on cosmetics — but keep new code readable and within ~100 col
 
 **Good first issues.** Look for the
 [`good first issue`](https://github.com/zynovexllc/vrp-ir/labels/good%20first%20issue)
-and [`parsing`](https://github.com/zynovexllc/vrp-ir/labels/parsing) labels. A
+and [`parser`](https://github.com/zynovexllc/vrp-ir/labels/parser) labels. A
 real (de-identified) config snippet we mis-parse is the easiest high-value start —
 open a *Config parsing issue* from the issue templates.
 
@@ -78,6 +78,9 @@ go through the process documented in [`docs/release-process.md`](docs/release-pr
 
 ## Project files
 
+- [`ROADMAP.md`](ROADMAP.md) — direction (Now / Next / Later) and the open-core
+  boundary.
+- [`GOVERNANCE.md`](GOVERNANCE.md) — how the project is run and PR acceptance bar.
 - [`CHANGELOG.md`](CHANGELOG.md) — version history (Keep a Changelog).
 - [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately.
 - [`docs/de-identifying-configs.md`](docs/de-identifying-configs.md) — how to
