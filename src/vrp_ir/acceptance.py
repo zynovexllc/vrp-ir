@@ -18,10 +18,11 @@ from .sourceref import SourceRef
 
 # Severity ranked most -> least serious.
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-_STATUS_ORDER = {"fail": 0, "warn": 1, "pass": 2}
+_STATUS_ORDER = {"fail": 0, "warn": 1, "unchecked": 2, "pass": 3, "na": 4}
 
 # Stable check catalogue: id -> intent ("what is verified").
 CHECKS_META: Dict[str, str] = {
+    "PARSER-UNCHECKED-LINES": "Parser recognized every non-empty configuration line",
     "FW-DEFAULT-DENY": "Security-policy default action denies unmatched traffic",
     "FW-PERMIT-SCOPE": "Permit rules are narrowed (by zone or address) on both sides",
     "FW-RULE-LOGGING": "Permit rules enable session logging",
@@ -44,7 +45,7 @@ class Finding:
     """One acceptance test-case result, citing its source evidence."""
     check_id: str
     severity: str            # critical | high | medium | low | info
-    status: str              # pass | fail | warn
+    status: str              # pass | warn | fail | na | unchecked
     detail: str
     evidence: List[SourceRef] = field(default_factory=list)
 
@@ -66,10 +67,16 @@ class AcceptanceReport:
             return "fail"
         if any(f.status == "warn" for f in self.findings):
             return "warn"
+        if any(f.status == "unchecked" for f in self.findings):
+            return "unchecked"
+        if any(f.status == "pass" for f in self.findings):
+            return "pass"
+        if any(f.status == "na" for f in self.findings):
+            return "na"
         return "pass"
 
     def counts(self) -> Dict[str, int]:
-        c = {"pass": 0, "warn": 0, "fail": 0}
+        c = {"pass": 0, "warn": 0, "fail": 0, "na": 0, "unchecked": 0}
         for f in self.findings:
             c[f.status] = c.get(f.status, 0) + 1
         return c
@@ -117,6 +124,10 @@ def _has_security_policy(cfg: VrpConfig) -> bool:
 
 def _check_default_deny(cfg: VrpConfig) -> Iterable[Finding]:
     if not _has_security_policy(cfg):
+        yield Finding(
+            "FW-DEFAULT-DENY", "info", "na",
+            "No security-policy was parsed; default-deny is not applicable.",
+            [])
         return
     da = cfg.security_default_action
     if da is not None and da.value == "permit":
@@ -378,6 +389,12 @@ def run_checks(cfg: VrpConfig) -> AcceptanceReport:
         analyzed_line_count=cfg.analyzed_line_count,
         unparsed_lines=list(cfg.unparsed_lines),
     )
+    if cfg.unparsed_lines:
+        report.findings.append(Finding(
+            "PARSER-UNCHECKED-LINES", "medium", "unchecked",
+            f"{len(cfg.unparsed_lines)} non-empty configuration line(s) were not "
+            "recognized by the parser; audit results may be incomplete.",
+            list(cfg.unparsed_lines)))
     for check in CHECKS:
         report.findings.extend(check(cfg))
     report.findings.sort(key=lambda f: (_STATUS_ORDER.get(f.status, 9),
@@ -385,7 +402,7 @@ def run_checks(cfg: VrpConfig) -> AcceptanceReport:
     return report
 
 
-_STATUS_ICON = {"pass": "✅", "warn": "⚠️", "fail": "❌"}
+_STATUS_ICON = {"pass": "✅", "warn": "⚠️", "fail": "❌", "na": "➖", "unchecked": "❔"}
 _NA = "No applicable security checks (no security-policy / zones / HRP)."
 
 
@@ -404,7 +421,8 @@ def render_markdown(report: AcceptanceReport) -> str:
         return "\n".join(out) + "\n"
     out += [
         f"- **Result**: {_STATUS_ICON[report.result]} {report.result.upper()}",
-        f"- **Summary**: {c['fail']} FAIL · {c['warn']} WARN · {c['pass']} PASS",
+        f"- **Summary**: {c['fail']} FAIL · {c['warn']} WARN · "
+        f"{c['unchecked']} UNCHECKED · {c['pass']} PASS · {c['na']} NA",
     ]
     out += _parser_coverage_details(report)
     out += [

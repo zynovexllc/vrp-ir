@@ -16,6 +16,8 @@ class TestAcceptance(unittest.TestCase):
         c = r.counts()
         self.assertEqual(c["fail"], 3)
         self.assertEqual(c["warn"], 2)
+        self.assertIn("na", c)
+        self.assertIn("unchecked", c)
 
     def test_default_deny_fail_with_line_evidence(self):
         r = run_checks(parse_file(RISKY))
@@ -70,18 +72,29 @@ class TestAcceptance(unittest.TestCase):
 
     def test_empty_report_renders_na_note(self):
         md = render_markdown(run_checks(parse_text("sysname X\n")))
-        self.assertIn("No applicable", md)
-        self.assertNotIn("PASS", md)   # must not claim PASS when nothing was checked
+        self.assertIn("FW-DEFAULT-DENY", md)
+        self.assertIn("NA", md)
+        self.assertNotIn("Result: ✅ PASS", md)   # must not claim PASS when nothing was checked
 
     def test_markdown_surfaces_parser_coverage(self):
         cfg = parse_text("sysname X\nunknown-security-feature enable\n", filename="cov.cfg")
 
         md = render_markdown(run_checks(cfg))
 
+        self.assertIn("PARSER-UNCHECKED-LINES", md)
+        self.assertIn("UNCHECKED", md)
         self.assertIn("Parser coverage", md)
         self.assertIn("1/2 recognized (50.0%)", md)
         self.assertIn("cov.cfg:2", md)
         self.assertIn("unknown-security-feature enable", md)
+
+    def test_unparsed_lines_make_report_unchecked(self):
+        r = run_checks(parse_text("sysname X\nunknown-security-feature enable\n"))
+
+        self.assertEqual(r.result, "unchecked")
+        finding = next(x for x in r.findings if x.check_id == "PARSER-UNCHECKED-LINES")
+        self.assertEqual((finding.status, finding.severity), ("unchecked", "medium"))
+        self.assertIn("not recognized", finding.detail)
 
     def test_clean_sample_warns_not_fails(self):
         r = run_checks(parse_file(CLEAN))
@@ -90,9 +103,12 @@ class TestAcceptance(unittest.TestCase):
         dd = next(x for x in r.findings if x.check_id == "FW-DEFAULT-DENY")
         self.assertEqual(dd.status, "pass")        # explicit deny-all, no permit default
 
-    def test_no_security_policy_yields_no_fw_findings(self):
+    def test_no_security_policy_yields_default_deny_na(self):
         r = run_checks(parse_text("sysname X\n"))
-        self.assertEqual([x.check_id for x in r.findings], [])
+        self.assertEqual(r.result, "na")
+        self.assertEqual([x.check_id for x in r.findings], ["FW-DEFAULT-DENY"])
+        self.assertEqual(r.findings[0].status, "na")
+        self.assertEqual(r.findings[0].evidence, [])
 
     def test_hrp_configured_but_disabled_warns(self):
         r = run_checks(parse_text("hrp interface GigabitEthernet0/0/7 remote 10.0.0.2\n"))
@@ -117,6 +133,9 @@ class TestAcceptance(unittest.TestCase):
 
         d = run_checks(cfg).to_dict()
 
+        self.assertEqual(d["result"], "unchecked")
+        self.assertEqual(d["counts"]["unchecked"], 1)
+        self.assertEqual(d["counts"]["na"], 1)
         self.assertEqual(d["parser_coverage"]["analyzed_lines"], 2)
         self.assertEqual(d["parser_coverage"]["recognized_lines"], 1)
         self.assertEqual(d["parser_coverage"]["unparsed_lines"], 1)
