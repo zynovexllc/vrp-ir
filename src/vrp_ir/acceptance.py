@@ -37,6 +37,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-SSH-WEAK-CIPHER": "SSH server does not use weak (CBC-mode / DES) ciphers",
     "FW-AAA-LOCAL-USER-TELNET": "Local AAA users are not granted the Telnet service type (cleartext)",
     "FW-SNMP-WEAK-COMMUNITY": "SNMP community is not a default/guessable string",
+    "FW-NTP-MISSING": "At least one NTP server is configured",
 }
 
 
@@ -375,11 +376,39 @@ def _check_snmp_weak_community(cfg: VrpConfig) -> Iterable[Finding]:
             [community.community.source])
 
 
+def _has_device_acceptance_scope(cfg: VrpConfig) -> bool:
+    """Return True when the parsed config has enough device facts for absence checks."""
+    return bool(
+        cfg.interfaces or cfg.acls or cfg.static_routes or cfg.firewall_zones or
+        cfg.security_rules or cfg.address_sets or cfg.service_sets or
+        cfg.nat_policy_rules or cfg.nat_servers or cfg.hrp or cfg.user_interfaces or
+        cfg.local_users or cfg.telnet_server_enabled is not None or
+        cfg.http_server_enabled is not None or cfg.ssh_server_ciphers or cfg.log_hosts
+    )
+
+
+def _check_ntp_missing(cfg: VrpConfig) -> Iterable[Finding]:
+    if cfg.ntp_servers:
+        yield Finding(
+            "FW-NTP-MISSING", "medium", "pass",
+            "At least one NTP server is configured.",
+            [server.source for server in cfg.ntp_servers])
+        return
+    if not _has_device_acceptance_scope(cfg):
+        return
+    yield Finding(
+        "FW-NTP-MISSING", "medium", "fail",
+        "No NTP server is configured; device time is unsynchronised, weakening "
+        "log correlation and audit evidence.",
+        [])
+
+
 CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_zone_iface_unique, _check_address_set_any, _check_hrp,
           _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
           _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher,
-          _check_aaa_local_user_telnet, _check_snmp_weak_community]
+          _check_aaa_local_user_telnet, _check_snmp_weak_community,
+          _check_ntp_missing]
 
 
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:

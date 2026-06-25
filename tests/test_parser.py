@@ -331,10 +331,10 @@ class TestFirewall(unittest.TestCase):
         no_nat = rules["trust-to-dmz-no-nat"]
         with open(SAMPLE_USG, encoding="utf-8") as f:
             lines = f.readlines()
-        self.assertEqual(snat.action.source.line, 59)
+        self.assertEqual(snat.action.source.line, 61)
         self.assertIn("action source-nat easy-ip", lines[snat.action.source.line - 1])
         self.assertEqual(snat.action.source.col, lines[snat.action.source.line - 1].index("source-nat easy-ip"))
-        self.assertEqual(no_nat.destination_addresses[0].source.line, 64)
+        self.assertEqual(no_nat.destination_addresses[0].source.line, 66)
         self.assertIn("10.10.10.0 mask 24",
                       lines[no_nat.destination_addresses[0].source.line - 1])
 

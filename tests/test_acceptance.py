@@ -14,7 +14,7 @@ class TestAcceptance(unittest.TestCase):
         r = run_checks(parse_file(RISKY))
         self.assertEqual(r.result, "fail")
         c = r.counts()
-        self.assertEqual(c["fail"], 3)
+        self.assertEqual(c["fail"], 4)
         self.assertEqual(c["warn"], 2)
         self.assertIn("na", c)
         self.assertIn("unchecked", c)
@@ -125,7 +125,7 @@ class TestAcceptance(unittest.TestCase):
         r = run_checks(parse_file(RISKY))
         d = json.loads(json.dumps(r.to_dict(), ensure_ascii=False))
         self.assertEqual(d["result"], "fail")
-        self.assertEqual(d["counts"]["fail"], 3)
+        self.assertEqual(d["counts"]["fail"], 4)
         self.assertIn("raw", d["findings"][0]["evidence"][0])
 
     def test_to_dict_includes_parser_coverage(self):
