@@ -1,0 +1,11 @@
+{
+  "result": "fail",
+  "min_parser_coverage": 100.0,
+  "must_flag": [
+    {"check_id": "FW-DEFAULT-DENY", "severity": "critical"},
+    {"check_id": "FW-PERMIT-SCOPE", "severity": "high"},
+    {"check_id": "FW-MGMT-TELNET", "severity": "high"},
+    {"check_id": "FW-MGMT-HTTP", "severity": "high"},
+    {"check_id": "FW-MGMT-VTY-TELNET", "severity": "high"}
+  ]
+}

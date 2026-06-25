@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Tests: a **golden corpus** of de-identified fixtures with hand-authored
+  `*.expected.json` ground truth and a **zero-false-negative** regression gate
+  (`tests/test_golden_corpus.py`) — required high-severity findings must keep
+  being surfaced and parser coverage must not regress.
 - Audit: a **Coverage & limitations** section in the report (Markdown + JSON
   `check_coverage`) that states what the audit asserted vs. left unasserted —
   listing `NA` (not applicable) and `UNCHECKED` (not evaluable) checks so the
