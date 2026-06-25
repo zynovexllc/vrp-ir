@@ -107,6 +107,24 @@ class AcceptanceReport:
             c[f.status] = c.get(f.status, 0) + 1
         return c
 
+    def check_coverage(self) -> Dict[str, object]:
+        """Summarize what the audit asserted vs. left unasserted.
+
+        ``pass``/``warn``/``fail`` findings made a claim; ``na``/``unchecked``
+        explicitly made no claim. Surfacing the latter is the point: the report
+        states *what it did not assert and why*.
+        """
+        asserted = [f for f in self.findings if f.status in ("pass", "warn", "fail")]
+        na = [f for f in self.findings if f.status == "na"]
+        unchecked = [f for f in self.findings if f.status == "unchecked"]
+        return {
+            "asserted": len(asserted),
+            "na": len(na),
+            "unchecked": len(unchecked),
+            "na_checks": [f.check_id for f in na],
+            "unchecked_checks": [f.check_id for f in unchecked],
+        }
+
     def parser_coverage(self) -> Dict[str, object]:
         unparsed = len(self.unparsed_lines)
         recognized = max(0, self.analyzed_line_count - unparsed)
@@ -125,6 +143,7 @@ class AcceptanceReport:
             "source_file": self.source_file,
             "result": self.result,
             "counts": self.counts(),
+            "check_coverage": self.check_coverage(),
             "parser_coverage": {
                 **self.parser_coverage(),
                 "unparsed": [{"file": e.file, "line": e.line, "col": e.col,
@@ -491,6 +510,7 @@ def render_markdown(report: AcceptanceReport) -> str:
         f"{c['unchecked']} UNCHECKED · {c['pass']} PASS · {c['na']} NA",
     ]
     out += _parser_coverage_details(report)
+    out += _coverage_limitations(report)
     out += [
         "",
         "## Checks",
@@ -534,4 +554,21 @@ def _parser_coverage_details(report: AcceptanceReport) -> List[str]:
     for e in report.unparsed_lines:
         snippet = f" — `{e.raw.strip()}`" if e.raw else ""
         out.append(f"- `{e.file}:{e.line}`{snippet}")
+    return out
+
+
+def _coverage_limitations(report: AcceptanceReport) -> List[str]:
+    cc = report.check_coverage()
+    out = [
+        "",
+        "## Coverage & limitations",
+        "",
+        f"- **Checks asserted**: {cc['asserted']} · "
+        f"**not applicable**: {cc['na']} · **unchecked**: {cc['unchecked']}",
+    ]
+    not_asserted = [f for f in report.findings if f.status in ("na", "unchecked")]
+    if not_asserted:
+        out += ["", "_Not asserted (no claim made):_"]
+        for f in not_asserted:
+            out.append(f"- `{f.check_id}` [{f.status.upper()}] — {f.detail}")
     return out
