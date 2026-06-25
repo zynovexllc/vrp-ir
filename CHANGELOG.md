@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `vpn-instance`, now carry `SourceRef` provenance.
 - Audit: `FW-SNMP-WEAK-COMMUNITY` warns on plaintext `public` / `private`
   SNMP community strings with line-cited evidence.
+- Audit: findings now distinguish `PASS`, `WARN`, `FAIL`, `NA`, and
+  `UNCHECKED`; parser coverage gaps now produce an explicit unchecked finding.
 
 ### Fixed
 - Parser: `parse_file(...)` now accepts UTF-8 files with a BOM and GB18030/GBK
