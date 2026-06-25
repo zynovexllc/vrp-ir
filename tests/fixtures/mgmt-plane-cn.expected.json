@@ -1,0 +1,7 @@
+{
+  "result": "fail",
+  "min_parser_coverage": 100.0,
+  "must_flag": [
+    {"check_id": "FW-MGMT-VTY-TELNET", "severity": "high"}
+  ]
+}
