@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Audit: a **Coverage & limitations** section in the report (Markdown + JSON
+  `check_coverage`) that states what the audit asserted vs. left unasserted —
+  listing `NA` (not applicable) and `UNCHECKED` (not evaluable) checks so the
+  report is explicit about what it did **not** claim.
 - Audit: an explicit **evidence policy** ("no source, no claim"). Findings now
   carry `confidence`, `rationale`, and an (advisory) `references` slot; an
   asserting `pass`/`warn`/`fail` finding without a cited source line must document
