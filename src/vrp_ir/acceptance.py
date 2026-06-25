@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 from .models import AddressSet, VrpConfig
 from .sourceref import SourceRef
@@ -542,12 +542,52 @@ CHECK_REFERENCES: Dict[str, List[StandardRef]] = {
 }
 
 
-CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
-          _check_zone_iface_unique, _check_address_set_any, _check_hrp,
-          _check_hrp_incomplete, _check_mgmt_telnet, _check_mgmt_http,
-          _check_vty_telnet, _check_vty_no_acl, _check_ssh_weak_cipher,
-          _check_aaa_local_user_telnet, _check_snmp_weak_community,
-          _check_snmp_v3, _check_ntp_missing]
+@dataclass(frozen=True)
+class CheckSpec:
+    """A registered acceptance check: its function plus structured metadata.
+
+    The registry is the single place that pairs a check function with its id,
+    human intent, and advisory references. Severity is intentionally not fixed
+    here — it is decided per finding by the check.
+    """
+    check_id: str
+    intent: str
+    fn: "Callable[[VrpConfig], Iterable[Finding]]"
+    references: List[StandardRef] = field(default_factory=list)
+
+
+def _spec(check_id: str, fn: "Callable[[VrpConfig], Iterable[Finding]]") -> CheckSpec:
+    return CheckSpec(check_id=check_id, intent=CHECKS_META[check_id], fn=fn,
+                     references=list(CHECK_REFERENCES.get(check_id, [])))
+
+
+# Check registry — registered functions + structured metadata (not a DSL).
+# Order is preserved as the audit run order.
+REGISTRY: List[CheckSpec] = [
+    _spec("FW-DEFAULT-DENY", _check_default_deny),
+    _spec("FW-PERMIT-SCOPE", _check_permit_scope),
+    _spec("FW-RULE-LOGGING", _check_rule_logging),
+    _spec("FW-ZONE-IFACE-UNIQUE", _check_zone_iface_unique),
+    _spec("FW-ADDRESS-SET-ANY", _check_address_set_any),
+    _spec("HRP-ENABLED", _check_hrp),
+    _spec("FW-HRP-INCOMPLETE", _check_hrp_incomplete),
+    _spec("FW-MGMT-TELNET", _check_mgmt_telnet),
+    _spec("FW-MGMT-HTTP", _check_mgmt_http),
+    _spec("FW-MGMT-VTY-TELNET", _check_vty_telnet),
+    _spec("FW-MGMT-VTY-NO-ACL", _check_vty_no_acl),
+    _spec("FW-SSH-WEAK-CIPHER", _check_ssh_weak_cipher),
+    _spec("FW-AAA-LOCAL-USER-TELNET", _check_aaa_local_user_telnet),
+    _spec("FW-SNMP-WEAK-COMMUNITY", _check_snmp_weak_community),
+    _spec("FW-SNMP-V3", _check_snmp_v3),
+    _spec("FW-NTP-MISSING", _check_ntp_missing),
+]
+
+CHECKS = [spec.fn for spec in REGISTRY]
+
+
+def registry() -> List[CheckSpec]:
+    """Return the registered checks (function + metadata), in run order."""
+    return list(REGISTRY)
 
 
 def list_checks() -> List[Dict[str, str]]:
