@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parser coverage: parsed IR and `vrp-ir audit` reports now surface unparsed
   configuration lines and coverage counts, so unsupported commands are visible
   instead of being silently hidden from acceptance reports.
+- Parsing: `info-center loghost` syslog targets, including optional
+  `vpn-instance`, now carry `SourceRef` provenance.
 
 ### Fixed
 - Parser: `parse_file(...)` now accepts UTF-8 files with a BOM and GB18030/GBK
