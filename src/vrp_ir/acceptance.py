@@ -525,6 +525,26 @@ CHECKS = [_check_default_deny, _check_permit_scope, _check_rule_logging,
           _check_ntp_missing]
 
 
+def list_checks() -> List[Dict[str, str]]:
+    """Return the check catalogue: ``[{"check_id", "intent"}, ...]`` sorted by id."""
+    return [{"check_id": cid, "intent": intent}
+            for cid, intent in sorted(CHECKS_META.items())]
+
+
+def explain_check(check_id: str) -> Optional[dict]:
+    """Describe one check (intent + advisory references), or ``None`` if unknown."""
+    if check_id not in CHECKS_META:
+        return None
+    return {
+        "check_id": check_id,
+        "intent": CHECKS_META[check_id],
+        "references": [{"framework": r.framework, "control": r.control,
+                        "level": r.level, "advisory_only": r.advisory_only,
+                        "manual_verified": r.manual_verified}
+                       for r in CHECK_REFERENCES.get(check_id, [])],
+    }
+
+
 def run_checks(cfg: VrpConfig) -> AcceptanceReport:
     """Run all acceptance checks; findings are ordered fail/warn/pass then severity."""
     report = AcceptanceReport(

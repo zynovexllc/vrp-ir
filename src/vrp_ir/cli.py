@@ -11,7 +11,8 @@ import argparse
 import json
 import sys
 
-from .acceptance import render_junit, render_markdown, render_sarif, run_checks
+from .acceptance import (explain_check, list_checks, render_junit,
+                         render_markdown, render_sarif, run_checks)
 from .parser import parse_file
 
 
@@ -33,6 +34,11 @@ def main(argv=None) -> int:
     pa.add_argument("--strict", action="store_true",
                     help="Exit non-zero if any check fails (CI gate).")
 
+    sub.add_parser("checks", help="List all audit checks.")
+
+    pe = sub.add_parser("explain", help="Explain one audit check by id.")
+    pe.add_argument("check_id", help="A check id, e.g. FW-DEFAULT-DENY.")
+
     args = p.parse_args(argv)
 
     if args.command == "parse":
@@ -52,6 +58,23 @@ def main(argv=None) -> int:
         else:
             sys.stdout.write(render_markdown(report))
         return 1 if (args.strict and report.result == "fail") else 0
+    if args.command == "checks":
+        for c in list_checks():
+            sys.stdout.write(f"{c['check_id']}  —  {c['intent']}\n")
+        return 0
+    if args.command == "explain":
+        info = explain_check(args.check_id)
+        if info is None:
+            sys.stderr.write(f"unknown check id: {args.check_id}\n")
+            return 2
+        sys.stdout.write(f"{info['check_id']}\n{info['intent']}\n")
+        if info["references"]:
+            sys.stdout.write("\nAdvisory references (not a certification claim):\n")
+            for r in info["references"]:
+                lvl = f" {r['level']}" if r["level"] else ""
+                verified = "" if r["manual_verified"] else " [unverified]"
+                sys.stdout.write(f"  - {r['framework']}{lvl}: {r['control']}{verified}\n")
+        return 0
     return 1
 
 

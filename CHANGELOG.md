@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- CLI: `vrp-ir checks` lists every audit check (id + intent), and
+  `vrp-ir explain <CHECK_ID>` prints a check's intent and its advisory
+  references — making the catalogue self-describing.
 - CLI: `vrp-ir audit --format sarif` and `--format junit` for CI integration —
   SARIF 2.1.0 (GitHub/GitLab code scanning, with the cited source line as the
   result location) and JUnit XML (red/green gating aligned with `--strict`).
