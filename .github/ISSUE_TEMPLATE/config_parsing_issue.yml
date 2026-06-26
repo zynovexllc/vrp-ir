@@ -26,7 +26,7 @@ body:
     id: expected
     attributes:
       label: Expected parse / behavior
-      description: What should the IR (or `vrp-ir audit` finding) contain?
+      description: What should the IR (or `vrp-ir audit` finding) contain? Include expected `SourceRef`, finding ID, or cited line when relevant.
     validations:
       required: true
   - type: textarea
@@ -40,7 +40,7 @@ body:
     id: version
     attributes:
       label: vrp-ir version
-      placeholder: "0.6.0"
+      placeholder: "0.9.0"
     validations:
       required: false
   - type: checkboxes
@@ -52,3 +52,7 @@ body:
           required: true
         - label: I scrubbed hostnames, IPs, SNMP communities, passwords, keys and customer identifiers.
           required: true
+        - label: This is the smallest snippet I could make while still reproducing the problem.
+          required: true
+        - label: If the issue depends on encoding, I stated that explicitly in the issue body (for example GB18030/GBK).
+          required: false
