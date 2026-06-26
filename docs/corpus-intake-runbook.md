@@ -11,6 +11,9 @@ Its purpose is twofold:
 This is a maintainer-facing workflow, but contributors should also be able to
 read it and know which submission path is appropriate.
 
+For copyable outbound request language, see
+[`docs/corpus-request-template.md`](corpus-request-template.md).
+
 ## 1. Intake decision tree
 
 Use this order every time:
