@@ -25,7 +25,7 @@ adds the workflow, coverage, and reporting that paid acceptance delivery needs.
 
 | Capability | vrp-ir (OSS) | AegisTwin (commercial) |
 | --- | --- | --- |
-| Security checks | ✅ 13 built-in checks, each citing the exact config line | ✅ Plus customer/standard baselines |
+| Security checks | ✅ 16 built-in checks, each citing the exact config line | ✅ Plus customer/standard baselines |
 | HLD/LLD → test cases | — | Traceable acceptance test cases derived from the design |
 | Evidence chain | Per-finding `file:line` evidence | End-to-end: design → topology → finding → sign-off |
 | Standard mapping | — | MLPS / carrier acceptance formats, compliance matrix |
@@ -34,7 +34,7 @@ adds the workflow, coverage, and reporting that paid acceptance delivery needs.
 
 | Capability | vrp-ir (OSS) | AegisTwin (commercial) |
 | --- | --- | --- |
-| Output | Markdown / JSON report | Customer-grade, auditable sign-off reports |
+| Output | Markdown / JSON / SARIF / JUnit | Customer-grade, auditable sign-off reports |
 | Interface | CLI | CLI + acceptance workbench |
 | CI gating | ✅ `--strict` exits non-zero on failure | ✅ Plus managed acceptance pipelines |
 

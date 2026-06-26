@@ -23,13 +23,16 @@ it came from.
 Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its source line
 ```
 
-> Status: **v0.6 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
+> Status: **v0.9 / alpha.** Routing/switching (VLAN, VRF RD/RT, interfaces,
 > ACL, static routes) **and USG firewall** (`firewall zone`, `security-policy`,
 > `nat-policy`, `nat server`, `ip address-set` / `ip service-set` objects, `hrp`,
 > and the **management plane** — `user-interface` con/vty, `ssh server cipher`,
-> `aaa` local-users, telnet/http switches) parsed with full source provenance,
-> plus a **security acceptance audit** (`vrp-ir audit`, 13 checks) whose findings
-> cite the exact config line. Roadmap below.
+> `aaa` local-users, telnet/http switches, `info-center loghost`, and SNMPv3
+> users) parsed with full source provenance, plus a **security acceptance audit**
+> (`vrp-ir audit`, 16 checks) whose findings cite the exact config line. Recent
+> releases added evidence policy, coverage transparency, advisory standards
+> anchoring, SARIF/JUnit output, a check registry, and `vrp-ir checks` /
+> `vrp-ir explain`. Roadmap below.
 
 > 💼 **Commercial** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
 > security-integration **acceptance** workbench. Need customer-grade acceptance
@@ -95,7 +98,7 @@ print(ip.address.value, ip.prefix_length.value) # 10.10.10.1 24
 print(ip.address.source)                        # examples/sample-vrp.cfg:11  ← provenance
 ```
 
-## Security acceptance audit (v0.6)
+## Security acceptance audit (v0.9)
 
 Turn the source-traceable IR into a **security acceptance report**: each check
 is a small test case (intent), and every finding cites the exact config line it
@@ -116,13 +119,14 @@ Default action is 'permit': all traffic matching no rule is allowed (permit-any)
 - `examples/sample-usg-risky.cfg:14` — `default action permit`
 ```
 
-Checks (13): policy default-deny (permit-any); permit-scope (rules not narrowed by
+Checks (16): policy default-deny (permit-any); permit-scope (rules not narrowed by
 zone/address, **dereferencing `address-set` references** so an object that resolves
 to `0.0.0.0/0` is still flagged); permit rules without session logging;
 one-interface-per-zone; `address-set` equal to any; HRP enabled; HRP enabled but
 heartbeat interface/peer incomplete; **management plane** — Telnet/HTTP enabled
 (cleartext), VTY accepting Telnet, VTY without an inbound source ACL, weak SSH
-ciphers (CBC/3DES/DES), and local AAA users granted the Telnet service. See a full
+ciphers (CBC/3DES/DES), local AAA users granted the Telnet service, weak SNMP
+communities, SNMP not locked to v3 auth+priv, and missing NTP. See a full
 rendered report at
 [`docs/acceptance-report-example.md`](docs/acceptance-report-example.md).
 
@@ -162,15 +166,21 @@ rendered report at
   (unparsed lines surfaced in the audit); `info-center loghost`; audit status
   semantics `PASS / WARN / FAIL / NA / UNCHECKED`; checks for weak SNMP community
   and missing NTP. ✅
+- **v0.8:** **Trust foundation** — evidence policy ("no source, no claim"),
+  richer report + coverage transparency, de-identified golden corpus with a
+  zero-false-negative gate, and advisory standards anchoring (incl. 等保 Level
+  3 / Level 4 advisory references). ✅
+- **v0.9:** **Evidence interop** — SARIF / JUnit output, `vrp-ir checks`,
+  `vrp-ir explain <CHECK_ID>`, a structured check registry, and SNMPv3
+  parsing + audit. ✅
 
 ### What's next
 
 The forward-looking roadmap is maintained as **Now / Next / Later** (no fixed
-dates) in **[ROADMAP.md](ROADMAP.md)**. In short: **Now** — trust foundation
-(evidence policy, real de-identified corpus, richer reports, SARIF/JUnit,
-advisory standards anchoring incl. 等保 Level 3/4 *advisory* references);
-**Next** — check registry, corpus-driven parser hardening, coverage breadth;
-**Later** — a stable IR/check-id contract that defines 1.0.
+dates) in **[ROADMAP.md](ROADMAP.md)**. In short: the recent `v0.8` / `v0.9`
+releases delivered the trust-foundation and evidence-interop batches; the next
+active work is corpus-driven parser hardening / coverage breadth, followed by a
+1.0 stability contract that freezes the IR schema and check-id catalogue.
 
 See **[GOVERNANCE.md](GOVERNANCE.md)** for how the project is run and the
 open-core boundary with AegisTwin.

@@ -17,6 +17,20 @@ Rules:
 
 See `docs/de-identifying-configs.md` for the full de-identification workflow.
 
+## Fixture taxonomy
+
+Current golden fixtures are intentionally small, but they already cover distinct
+config families:
+
+- `deidentified-golden-vrp.cfg` — routing/switching baseline
+- `hardened-usg.cfg` — cleaner/hardened firewall posture
+- `mgmt-plane-cn.cfg` — management-plane and localized content
+- `objects-nat-usg.cfg` — address/service objects plus NAT
+- `risky-edge-usg.cfg` — intentionally risky edge posture
+
+When adding a new real de-identified corpus fixture, prefer placing it into a
+clear family instead of adding a second near-duplicate of an existing one.
+
 ## Golden corpus regression gate
 
 Each `<name>.cfg` may have a sibling `<name>.expected.json` that turns it into a
@@ -39,3 +53,24 @@ golden case checked by `tests/test_golden_corpus.py`:
 
 To contribute a real config: drop in a de-identified `<name>.cfg` and a
 hand-authored `<name>.expected.json`.
+
+## Intake workflow for a new real de-identified fixture
+
+1. Reduce the snippet to the smallest config that still reproduces the parser or
+   audit behavior.
+2. Apply the redaction rules from `docs/de-identifying-configs.md`.
+3. Choose a fixture name that describes the config family, not the customer or
+   site.
+4. Add `<name>.cfg` under `tests/fixtures/`.
+5. Add `<name>.expected.json` with:
+   - expected overall result,
+   - minimum parser coverage,
+   - any findings that must keep being surfaced.
+6. Add or extend unit tests when the fixture introduces new parse-time facts
+   that deserve direct `SourceRef` assertions.
+7. Run the full gate:
+   - `PYTHONPATH=src python3 -m unittest discover -s tests`
+   - `ruff check .`
+
+If a new fixture exposes a recurring parser blind spot across multiple
+commands/views, that is the right trigger for reopening parser-hardening work.
