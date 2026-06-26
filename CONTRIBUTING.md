@@ -8,6 +8,10 @@ If `vrp-ir` mis-parses a real VRP snippet, that's the highest-value issue.
 Please **de-identify** (scrub IPs, hostnames, secrets) before sharing.
 Follow [`docs/de-identifying-configs.md`](docs/de-identifying-configs.md) and
 prefer the smallest synthetic reproducer over a full device config.
+If you are not sure a real sample is safe to publish yet, use the private
+handoff route documented in
+[`docs/corpus-intake-runbook.md`](docs/corpus-intake-runbook.md) instead of a
+public issue.
 
 ## Dev setup
 
@@ -85,6 +89,8 @@ go through the process documented in [`docs/release-process.md`](docs/release-pr
 - [`SECURITY.md`](SECURITY.md) — how to report a vulnerability privately.
 - [`docs/de-identifying-configs.md`](docs/de-identifying-configs.md) — how to
   safely share minimal VRP/USG snippets.
+- [`docs/corpus-intake-runbook.md`](docs/corpus-intake-runbook.md) — when to use
+  a public issue vs. a private handoff vs. a security advisory for new corpus.
 - [`docs/release-process.md`](docs/release-process.md) — maintainer release and
   PyPI publishing flow.
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant.
