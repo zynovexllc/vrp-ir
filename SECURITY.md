@@ -36,3 +36,8 @@ first** — scrub real IPs, hostnames, keys and community strings. See
 [`docs/de-identifying-configs.md`](docs/de-identifying-configs.md). The best bug
 reports use minimal, synthetic snippets that reproduce the issue without any
 real data.
+
+If a sample is valuable but you are not sure it can be safely published yet,
+use the private corpus handoff route documented in
+[`docs/corpus-intake-runbook.md`](docs/corpus-intake-runbook.md). If the report
+is also a parser security issue, prefer a private security advisory.

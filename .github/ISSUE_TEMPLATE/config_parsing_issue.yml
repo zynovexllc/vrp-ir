@@ -10,6 +10,9 @@ body:
         most useful contribution. Please scrub real IPs, hostnames, keys and
         community strings before pasting — synthetic values are perfect.
         See `docs/de-identifying-configs.md` for the de-identification checklist.
+        If you have a high-value real sample but are not sure it is safe to post
+        publicly, use the **Private corpus handoff / de-identification help**
+        contact link instead of opening a public issue.
   - type: textarea
     id: snippet
     attributes:
