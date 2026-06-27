@@ -30,6 +30,7 @@ future fixture intake.
   - inbound protocol and ACL restrictions
   - `ssh server cipher`
   - `aaa local-user service-type`
+  - `local-aaa-user password policy` views
   - telnet/http switches
 - Additional operational/security inputs:
   - `info-center loghost`
@@ -57,6 +58,10 @@ Current registered checks:
 - `FW-MGMT-VTY-NO-ACL`
 - `FW-SSH-WEAK-CIPHER`
 - `FW-AAA-LOCAL-USER-TELNET`
+- `FW-AAA-PASSWORD-EXPIRE-DISABLED`
+- `FW-AAA-PASSWORD-ALERT-DISABLED`
+- `FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED`
+- `FW-AAA-PASSWORD-HISTORY-DISABLED`
 - `FW-SNMP-WEAK-COMMUNITY`
 - `FW-SNMP-V3`
 - `FW-NTP-MISSING`
@@ -78,7 +83,8 @@ These items appear in repo planning (`ROADMAP.md`, open issues, or both), but
 are not yet something maintainers should describe as delivered:
 
 - `vsys`
-- `aaa` password policy
+- deferred Huawei password-policy families outside the shipped
+  `local-aaa-user password policy` view family
 - interface/routing authentication
 - field-level config diff with `SourceRef`
 - 1.0 schema/check-id stability contract
