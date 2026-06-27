@@ -269,8 +269,8 @@ Interpretation:
 
 ## 9. Active next-step policy
 
-Until the first manual-grounded coverage batch is completed, the only valid
-"what next?" answers are:
+Until the currently selected manual-grounded coverage batch is completed, the
+only valid "what next?" answers are:
 
 1. maintain truth-surface accuracy,
 2. maintain corpus-readiness and safe intake artifacts,
