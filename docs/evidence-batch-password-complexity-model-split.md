@@ -50,9 +50,9 @@ Use public primary sources first.
 
 Initial candidate rows:
 
-- `user-password complexity-check` on WLAN/AP-style command references
-- `user-password complexity-check` on Huawei docs where the local-user default
-  is described differently
+- `user-password complexity-check` in AAA-view WLAN/AP-style command references
+- `user-password complexity-check` in `local-aaa-server` / local-AAA-view
+  Huawei docs where the default differs by scope
 - `local-user policy password complexity-enhance` on CX-style docs
 
 For each row, capture:
@@ -86,7 +86,21 @@ enough to audit without inferring anything from command absence.
 If the family still collapses multiple product/view/default models together, do
 not force implementation. Record the split and move to a different candidate.
 
-## 5. Acceptance criteria for this evidence batch
+## 5. Current reviewed direction
+
+The currently reviewed public-primary-source evidence supports this working
+direction:
+
+1. `user-password complexity-check` and
+   `local-user policy password complexity-enhance` should **not** be treated as
+   one model.
+2. A narrowed follow-up issue may be justified for the
+   `user-password complexity-check` family **only if** it preserves scope
+   explicitly (`aaa` vs `local-aaa-server`) and audits only explicit disabling.
+3. `local-user policy password complexity-enhance` remains deferred as a
+   separate CX-style family.
+
+## 6. Acceptance criteria for this evidence batch
 
 This batch is complete only when:
 
