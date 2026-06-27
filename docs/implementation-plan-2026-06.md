@@ -207,7 +207,8 @@ The current remote backlog mapping is:
 - `#75` — later-stage 1.0 contract work
 - `#87` — feedback / field-evidence enhancement track, no longer the mainline
   phase gate
-- `#92` — current mainline manual-analysis batch for `aaa` password policy
+- `#98` — current mainline manual-analysis batch for password-complexity
+  command-model split
 
 This means the next justified mainline action is **not** to start `#74`; it is
-to complete `#92` / the selected manual-grounded evidence batch.
+to complete `#98` / the selected manual-grounded evidence batch.

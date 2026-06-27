@@ -84,10 +84,13 @@ Phase 2 begins when:
 Reason:
 
 - Phase 0 and Phase 1 are complete
-- the first concrete evidence batch has been selected:
-  - `docs/evidence-batch-aaa-password-policy.md`
-- this batch is based on public primary sources plus later zero-export field
-  validation, which matches the current program direction
+- the first manual-grounded cycle has already landed:
+  - `#92` selected and narrowed the `local-aaa-user` family
+  - `#93` shipped parser support
+  - `#96` shipped explicit-weakening audit checks
+- the next concrete evidence batch has now been selected:
+  - `docs/evidence-batch-password-complexity-model-split.md`
+  - GitHub issue `#98`
 
 ### Decision
 
@@ -101,7 +104,7 @@ Phase 2 is the active mainline.
 
 Reason:
 
-- the repo has not yet completed the first manual-grounded coverage batch
+- the repo has not yet completed a feedback-driven correction cycle
 - feedback / field validation remains a later correction and confirmation phase
 
 ## 5. Phase 4: Stability Contract
@@ -112,7 +115,8 @@ Reason:
 
 Reason:
 
-- the repo has not yet completed manual-grounded expansion
+- the repo has completed one manual-grounded cycle, but not enough to freeze a
+  stable contract intentionally
 - the repo has not yet completed a feedback/field-validation cycle
 
 ## 6. Phase 5: Integration Layer
@@ -134,8 +138,8 @@ The current valid next-step trigger for mainline feature work is:
 
 Current repo representation of that batch:
 
-- `docs/evidence-batch-aaa-password-policy.md`
-- GitHub issue `#92` — `Manual analysis batch: AAA password policy`
+- `docs/evidence-batch-password-complexity-model-split.md`
+- GitHub issue `#98` — `Manual analysis batch: password complexity command-model split`
 
 Until that batch is completed, the repo may still do:
 
