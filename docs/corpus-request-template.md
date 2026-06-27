@@ -10,6 +10,10 @@ The goal is to make sample collection:
 - low-friction,
 - and useful for `vrp-ir` regression coverage.
 
+For operator/security-sensitive environments where config export is unrealistic,
+pair this document with
+[`docs/corpus-acquisition-playbook.md`](corpus-acquisition-playbook.md).
+
 ## 1. What we are asking for
 
 We are **not** asking for full production configs by default.
