@@ -29,7 +29,7 @@ Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its sour
 > and the **management plane** — `user-interface` con/vty, `ssh server cipher`,
 > `aaa` local-users, `local-aaa-user` password-policy views, telnet/http
 > switches, `info-center loghost`, and SNMPv3 users) parsed with full source
-> provenance, plus a **security acceptance audit** (`vrp-ir audit`, 20 checks)
+> provenance, plus a **security acceptance audit** (`vrp-ir audit`, 21 checks)
 > whose findings cite the exact config line. Recent releases added evidence
 > policy, coverage transparency, advisory standards anchoring, SARIF/JUnit
 > output, a check registry, and `vrp-ir checks` / `vrp-ir explain`. Roadmap
@@ -120,7 +120,7 @@ Default action is 'permit': all traffic matching no rule is allowed (permit-any)
 - `examples/sample-usg-risky.cfg:14` — `default action permit`
 ```
 
-Checks (20): policy default-deny (permit-any); permit-scope (rules not narrowed by
+Checks (21): policy default-deny (permit-any); permit-scope (rules not narrowed by
 zone/address, **dereferencing `address-set` references** so an object that resolves
 to `0.0.0.0/0` is still flagged); permit rules without session logging;
 one-interface-per-zone; `address-set` equal to any; HRP enabled; HRP enabled but
@@ -129,8 +129,9 @@ heartbeat interface/peer incomplete; **management plane** — Telnet/HTTP enable
 ciphers (CBC/3DES/DES), local AAA users granted the Telnet service, explicit
 local AAA password-policy weakening (`password expire 0`, `password alert
 before-expire 0`, `undo password alert original`, `password history record
-number 0`), weak SNMP communities, SNMP not locked to v3 auth+priv, and
-missing NTP. See a full rendered report at
+number 0`), explicit `undo user-password complexity-check` in `aaa` /
+`local-aaa-server` scope, weak SNMP communities, SNMP not locked to v3
+auth+priv, and missing NTP. See a full rendered report at
 [`docs/acceptance-report-example.md`](docs/acceptance-report-example.md).
 
 ## Design principles

@@ -1,0 +1,7 @@
+{
+  "result": "warn",
+  "min_parser_coverage": 100.0,
+  "must_flag": [
+    {"check_id": "FW-AAA-PASSWORD-COMPLEXITY-DISABLED", "severity": "medium"}
+  ]
+}

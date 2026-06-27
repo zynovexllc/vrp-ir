@@ -31,6 +31,7 @@ future fixture intake.
   - `ssh server cipher`
   - `aaa local-user service-type`
   - `local-aaa-user password policy` views
+  - `user-password complexity-check` in `aaa` / `local-aaa-server` scope
   - telnet/http switches
 - Additional operational/security inputs:
   - `info-center loghost`
@@ -62,6 +63,7 @@ Current registered checks:
 - `FW-AAA-PASSWORD-ALERT-DISABLED`
 - `FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED`
 - `FW-AAA-PASSWORD-HISTORY-DISABLED`
+- `FW-AAA-PASSWORD-COMPLEXITY-DISABLED`
 - `FW-SNMP-WEAK-COMMUNITY`
 - `FW-SNMP-V3`
 - `FW-NTP-MISSING`

@@ -6,7 +6,8 @@ from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LocalAaaPasswordPolicy,
                      LogHost, NatPolicyRule, NatServer, NtpServer, SecurityRule,
                      ServiceSet, ServiceSetItem, SnmpCommunity, SnmpUsmUser,
-                     StaticRoute, Vlan, VlanRange, Vrf, VrpConfig)
+                     StaticRoute, UserPasswordComplexityCheck, Vlan, VlanRange,
+                     Vrf, VrpConfig)
 from .parser import parse_file, parse_text
 from .sourceref import SourceRef, Traced
 
@@ -16,6 +17,7 @@ __all__ = [
     "FirewallZone", "SecurityRule", "NatPolicyRule", "NatServer",
     "NtpServer", "LogHost", "SnmpCommunity", "SnmpUsmUser", "Hrp", "AddressSet",
     "AddressSetMember", "ServiceSet", "ServiceSetItem", "LocalAaaPasswordPolicy",
+    "UserPasswordComplexityCheck",
     "run_checks", "render_markdown", "render_sarif", "render_junit",
     "list_checks", "explain_check", "registry", "CheckSpec",
     "AcceptanceReport", "Finding", "StandardRef",

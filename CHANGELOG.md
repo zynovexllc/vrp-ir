@@ -58,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Parsing: scope-aware `user-password complexity-check [ three-of-kinds ]`
+  support for `aaa` and `local-aaa-server`, with explicit scope preserved in
+  the IR and `SourceRef` on the command line.
+- Audit: `FW-AAA-PASSWORD-COMPLEXITY-DISABLED` warns only on explicit
+  `undo user-password complexity-check`, never on command absence or guessed
+  defaults.
 - Audit: explicit-weakening checks for `local-aaa-user password policy` views:
   `FW-AAA-PASSWORD-EXPIRE-DISABLED`,
   `FW-AAA-PASSWORD-ALERT-DISABLED`,
