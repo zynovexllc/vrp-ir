@@ -43,8 +43,9 @@ That objective is narrower than "network automation platform" and narrower than
 These are not optional. Every phase must preserve them.
 
 1. **Evidence first**: no source, no claim.
-2. **Corpus before architecture**: parser shape follows real de-identified
-   inputs, not speculative elegance.
+2. **Manuals before speculation**: one-stage parser/audit coverage may be built
+   from official product manuals and command references before field evidence is
+   available; field evidence is then used to validate and correct reality gaps.
 3. **OSS core stays narrow**: no drift into multi-vendor abstraction, live
    collection, remediation, or certification-grade content.
 4. **Contracts are earned**: `1.0` happens only after output stability is
@@ -108,33 +109,63 @@ Phase 1 is complete only when:
 2. current coverage and corpus gaps are versioned in-repo,
 3. the next corpus-backed batch can be selected by policy rather than intuition.
 
-## Phase 2: Corpus-Backed Expansion
+## Phase 2: Manual-Grounded Coverage Build
 
 ### Purpose
 
-Expand parse/audit value only where real corpus demonstrates demand.
+Expand parse/audit value from official product manuals, command references, and
+public primary sources, without waiting for exported field configs.
 
 ### Allowed work
 
-- parser additions tied to new de-identified fixtures
-- new checks tied to real acceptance gaps
-- evidence-quality improvements tied to real findings
+- parser additions tied to documented command families
+- audit additions tied to configuration semantics visible in documented syntax
+- synthetic/lab fixtures derived from public primary sources
+- evidence-quality improvements tied to documented command behavior
 - small CI/output improvements supporting real user workflows
 
 ### Explicitly not allowed as primary work
 
-- architecture-led parser rewrite with no new corpus trigger
+- architecture-led parser rewrite with no command/reference grounding
 - broad scope expansion beyond Huawei VRP/USG offline acceptance
 
 ### Exit gate
 
 Phase 2 is mature enough to move on only when:
 
-1. at least one full additional cycle of corpus-backed expansion has landed,
+1. at least one full additional cycle of manual-grounded expansion has landed,
 2. output fields and check IDs show low churn across those batches,
 3. maintainers can name which outputs are stable enough to freeze.
 
-## Phase 3: Stability Contract
+## Phase 3: Feedback / Field Validation
+
+### Purpose
+
+Use post-launch feedback, zero-export field validation, customer-side
+extraction, and exceptional private evidence to confirm or correct the
+manual-grounded model.
+
+### Allowed work
+
+- zero-export field validation
+- customer-side extraction / normalization
+- grammar-only or reduced field evidence
+- follow-up parser or audit corrections grounded in real-world feedback
+
+### Explicitly not allowed as primary work
+
+- making exported customer config the default intake assumption
+- treating friendship or trust as a substitute for security policy
+
+### Exit gate
+
+Phase 3 is mature enough to move on only when:
+
+1. at least one feedback-driven correction cycle has landed,
+2. maintainers understand where manuals and field reality diverge,
+3. the remaining output contract looks stable enough to freeze intentionally.
+
+## Phase 4: Stability Contract
 
 ### Purpose
 
@@ -161,7 +192,7 @@ Phase 3 is complete only when:
 3. deprecation policy is documented,
 4. maintainers are willing to preserve compatibility intentionally.
 
-## Phase 4: Integration Layer
+## Phase 5: Integration Layer
 
 ### Purpose
 
@@ -188,9 +219,9 @@ The active rule is:
 This means:
 
 - no parser-hardening refactor while the project is still cleaning up truth
-  surfaces and corpus governance,
-- no `1.0` contract work as the mainline while corpus-backed expansion is still
-  unsettled.
+  surfaces or working through manual-grounded coverage build,
+- no `1.0` contract work as the mainline while manual-grounded expansion and at
+  least one feedback-validation cycle are still unsettled.
 
 ## 6. Batch rule inside each phase
 
@@ -223,25 +254,28 @@ Current assessment:
 
 - **Phase 0**: complete
 - **Phase 1**: complete
-- **Phase 2**: not yet active as the mainline
+- **Phase 2**: active next mainline
 - **Phase 3**: not active
 - **Phase 4**: not active
+- **Phase 5**: not active
 
 Interpretation:
 
 - Phase 0/1 preparation is complete; their status should now be maintained, not
   re-opened casually.
-- It is **not** valid to treat Phase 2 or Phase 3 as the mainline yet.
+- It is now valid to treat Phase 2 (manual-grounded coverage build) as the
+  mainline.
+- It is **not** valid to treat Phase 3+ as the mainline yet.
 
 ## 9. Active next-step policy
 
-Until a new corpus-backed trigger exists, the only valid "what next?" answers
-are:
+Until the first manual-grounded coverage batch is completed, the only valid
+"what next?" answers are:
 
 1. maintain truth-surface accuracy,
-2. maintain corpus-readiness artifacts,
-3. record status cleanly,
-4. wait for a real de-identified corpus trigger.
+2. maintain corpus-readiness and safe intake artifacts,
+3. execute the selected manual-grounded evidence batch,
+4. record status cleanly.
 
-Only after that should the project select the first real corpus-backed expansion
-batch.
+Only after that should the project move into feedback / field validation as the
+next major phase.

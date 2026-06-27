@@ -68,29 +68,32 @@ Evidence:
 
 Phase 1 is complete.
 
-## 3. Phase 2: Corpus-Backed Expansion
+## 3. Phase 2: Manual-Grounded Coverage Build
 
 ### Entry gate
 
-Phase 2 begins only when a new real de-identified corpus artifact justifies a
-specific parser/audit expansion batch.
+Phase 2 begins when:
+
+1. Phase 0 and Phase 1 are complete, and
+2. a concrete manual-grounded evidence batch is selected.
 
 ### Assessment
 
-`NOT STARTED`
+`ACTIVE NEXT MAINLINE`
 
 Reason:
 
-- no new de-identified corpus batch has been recorded in-repo since the current
-  Phase 0 / Phase 1 completion work
-- therefore parser-hardening or coverage-expansion work would still be
-  speculative
+- Phase 0 and Phase 1 are complete
+- the first concrete evidence batch has been selected:
+  - `docs/evidence-batch-aaa-password-policy.md`
+- this batch is based on public primary sources plus later zero-export field
+  validation, which matches the current program direction
 
 ### Decision
 
-Phase 2 is not the active mainline yet.
+Phase 2 is the active mainline.
 
-## 4. Phase 3: Stability Contract
+## 4. Phase 3: Feedback / Field Validation
 
 ### Assessment
 
@@ -98,11 +101,21 @@ Phase 2 is not the active mainline yet.
 
 Reason:
 
-- the repo has not yet gone through another corpus-backed expansion cycle after
-  the current 0.9.0 surface
-- output stability has not yet been re-demonstrated under new real corpus
+- the repo has not yet completed the first manual-grounded coverage batch
+- feedback / field validation remains a later correction and confirmation phase
 
-## 5. Phase 4: Integration Layer
+## 5. Phase 4: Stability Contract
+
+### Assessment
+
+`NOT STARTED`
+
+Reason:
+
+- the repo has not yet completed manual-grounded expansion
+- the repo has not yet completed a feedback/field-validation cycle
+
+## 6. Phase 5: Integration Layer
 
 ### Assessment
 
@@ -113,21 +126,32 @@ Reason:
 - integration work is explicitly downstream of a more mature and re-validated
   core
 
-## 6. Active next-step rule
+## 7. Active next-step rule
 
-The only valid next-step trigger for new feature work is:
+The current valid next-step trigger for mainline feature work is:
 
-> a new real de-identified fixture or corpus-backed acceptance gap
+> completion of the selected manual-grounded evidence batch
 
-Current backlog representation of that trigger:
+Current repo representation of that batch:
 
-- `#87` — collect the next de-identified corpus batch to unlock Phase 2
+- `docs/evidence-batch-aaa-password-policy.md`
+- GitHub issue `#92` — `Manual analysis batch: AAA password policy`
 
-Until that trigger exists, the repo may still do:
+Until that batch is completed, the repo may still do:
 
 - maintenance,
 - factual corrections,
 - release hygiene,
 - and plan/status updates,
 
-but it should not pretend to be in active parser-expansion mode.
+but it should keep Phase 2 focused on manual-grounded coverage work, not drift
+into speculative architecture refactors.
+
+## 8. Feedback / field-validation track
+
+The feedback / field-validation track is still relevant, but it is no longer
+the mainline gate.
+
+Current backlog representation:
+
+- `#87` — `Field evidence / feedback track for post-manual validation`

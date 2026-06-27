@@ -12,20 +12,20 @@ Deliver the next `vrp-ir` improvements in an order that preserves trust:
 
 1. repo/public-state accuracy,
 2. backlog accuracy,
-3. corpus-driven growth inputs,
+3. manual-grounded coverage build,
 4. only then broader parser/contract work.
 
 ## 2. Current execution rule
 
-Until new real de-identified corpus arrives, **do not** start a speculative
-parser-hardening refactor.
+Until the selected manual-grounded evidence batch is completed, **do not**
+start a speculative parser-hardening refactor.
 
 That means:
 
-- `#74` is policy-governed by corpus availability.
+- `#74` is policy-governed by stronger evidence than conjecture.
 - `#75` remains a later stabilization target.
-- the next implementation batches should focus on **truth surfaces** and
-  **corpus-readiness**.
+- the next implementation batches should focus on **manual-grounded evidence**
+  and **coverage build**.
 
 ## 3. Batch plan
 
@@ -117,12 +117,12 @@ Prepare the repo to absorb more de-identified real configs cleanly.
 
 - A new maintainer or contributor can add a corpus-backed fixture without guesswork.
 
-## Batch B2: Corpus-backed coverage expansion
+## Batch B2: Manual-grounded coverage expansion
 
 ### Scope
 
-Only start when at least one new real de-identified config exposes a concrete
-blind spot.
+Only start when the selected command family has enough public-manual evidence to
+justify a small parser/audit batch.
 
 ### Candidate areas
 
@@ -133,7 +133,8 @@ blind spot.
 
 ### Gate
 
-No batch starts unless a real fixture demonstrates the gap.
+No batch starts unless the maintainer can point to a concrete command family,
+documented syntax boundary, and explicit intended parser/audit outcome.
 
 ## Batch C1: 1.0 contract preparation
 
@@ -194,7 +195,8 @@ The immediate next actions after this document lands are:
 
 1. record the active program state against the phase gates,
 2. keep Phase 0/1 artifacts accurate,
-3. only choose the first true Batch B2 candidate when new corpus exists.
+3. complete the selected manual-grounded evidence batch,
+4. then decide whether to open the first real implementation batch.
 
 ## 7. Backlog sync
 
@@ -203,8 +205,9 @@ The current remote backlog mapping is:
 - `#67` — umbrella for remaining interop/maturity work
 - `#74` — parser hardening, explicitly corpus-blocked
 - `#75` — later-stage 1.0 contract work
-- `#87` — the concrete next-step unlock issue for collecting the next
-  de-identified corpus batch
+- `#87` — feedback / field-evidence enhancement track, no longer the mainline
+  phase gate
+- `#92` — current mainline manual-analysis batch for `aaa` password policy
 
 This means the next justified mainline action is **not** to start `#74`; it is
-to satisfy `#87`.
+to complete `#92` / the selected manual-grounded evidence batch.

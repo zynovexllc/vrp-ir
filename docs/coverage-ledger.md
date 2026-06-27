@@ -1,7 +1,7 @@
 # Coverage Ledger
 
 This ledger is a maintainer-facing map of what the current repo covers and what
-is still waiting on more corpus.
+still needs more evidence before it should be treated as shipped scope.
 
 It is not a marketing checklist. It is meant to support roadmap decisions and
 future fixture intake.
@@ -84,22 +84,36 @@ are not yet something maintainers should describe as delivered:
 - 1.0 schema/check-id stability contract
 - parser-hardening refactor
 
-## 4. Corpus-blocked areas
+## 4. Evidence-blocked areas
 
-The following should be treated as corpus-blocked rather than architecture-led:
+The following should be treated as evidence-blocked rather than
+architecture-led:
 
 - parser hardening across recurring view/dispatch patterns
 - broader management-plane hardening beyond the current checks
 - additional vendor-specific or deployment-specific control interpretations
-- any stability-contract decision that depends on more observed real configs
+- any stability-contract decision that depends on more observed command models
+  or real configs
+
+Evidence for these areas may come from:
+
+- public primary sources,
+- self-built lab corpus grounded in vendor syntax,
+- zero-export field validation,
+- or de-identified corpus fixtures
+
+What still remains invalid is architecture-led expansion without one of those
+inputs.
 
 ## 5. Intake rule
 
 When choosing the next implementation batch, prefer a batch that satisfies at
 least one of these:
 
-1. a new de-identified fixture exposes a parser blind spot,
-2. a current finding is evidence-poor or misleading,
-3. a downstream CI workflow needs a small extension of already-shipped output.
+1. a documented command family exposes a stable syntax boundary and explicit
+   offline semantic,
+2. a new de-identified fixture exposes a parser blind spot,
+3. a current finding is evidence-poor or misleading,
+4. a downstream CI workflow needs a small extension of already-shipped output.
 
 If none of those is true, the batch is probably speculative and should wait.
