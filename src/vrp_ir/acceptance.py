@@ -42,6 +42,7 @@ CHECKS_META: Dict[str, str] = {
     "FW-AAA-PASSWORD-ALERT-DISABLED": "Local AAA password-policy view does not explicitly disable password expiry alerts",
     "FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED": "Local AAA password-policy view does not explicitly disable initial-password change prompts",
     "FW-AAA-PASSWORD-HISTORY-DISABLED": "Local AAA password-policy view does not explicitly disable password history reuse protection",
+    "FW-AAA-PASSWORD-COMPLEXITY-DISABLED": "Password complexity check is not explicitly disabled in AAA or local-AAA scope",
     "FW-SNMP-WEAK-COMMUNITY": "SNMP community is not a default/guessable string",
     "FW-SNMP-V3": "SNMP uses v3 with authentication and privacy (no v1/v2c)",
     "FW-NTP-MISSING": "At least one NTP server is configured",
@@ -495,6 +496,17 @@ def _check_aaa_password_history_disabled(cfg: VrpConfig) -> Iterable[Finding]:
             [policy.password_history_record_number.source])
 
 
+def _check_aaa_password_complexity_disabled(cfg: VrpConfig) -> Iterable[Finding]:
+    for check in cfg.user_password_complexity_checks:
+        if check.enabled.value:
+            continue
+        yield Finding(
+            "FW-AAA-PASSWORD-COMPLEXITY-DISABLED", "medium", "warn",
+            f"Password complexity check is explicitly disabled in "
+            f"{check.scope.value} scope with 'undo user-password complexity-check'.",
+            [check.source])
+
+
 def _check_snmp_weak_community(cfg: VrpConfig) -> Iterable[Finding]:
     for community in cfg.snmp_communities:
         if community.community is None:
@@ -537,6 +549,7 @@ def _has_device_acceptance_scope(cfg: VrpConfig) -> bool:
         cfg.security_rules or cfg.address_sets or cfg.service_sets or
         cfg.nat_policy_rules or cfg.nat_servers or cfg.hrp or cfg.user_interfaces or
         cfg.local_users or cfg.local_aaa_password_policies or
+        cfg.user_password_complexity_checks or
         cfg.telnet_server_enabled is not None or
         cfg.http_server_enabled is not None or cfg.ssh_server_ciphers or cfg.log_hosts
     )
@@ -600,6 +613,8 @@ CHECK_REFERENCES: Dict[str, List[StandardRef]] = {
         StandardRef("Huawei-hardening", "Do not disable initial-password change prompting")],
     "FW-AAA-PASSWORD-HISTORY-DISABLED": _dengbao("身份鉴别：应防止历史口令重复使用") + [
         StandardRef("Huawei-hardening", "Do not set 'password history record number 0'")],
+    "FW-AAA-PASSWORD-COMPLEXITY-DISABLED": _dengbao("身份鉴别：口令应满足复杂度要求") + [
+        StandardRef("Huawei-hardening", "Do not disable user-password complexity-check")],
     "FW-NTP-MISSING": _dengbao("时间同步：配置可信 NTP 以保证日志可追溯") + [
         StandardRef("CIS-style", "Configure trusted NTP for log correlation")],
 }
@@ -644,6 +659,7 @@ REGISTRY: List[CheckSpec] = [
     _spec("FW-AAA-PASSWORD-ALERT-DISABLED", _check_aaa_password_alert_disabled),
     _spec("FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED", _check_aaa_password_initial_change_disabled),
     _spec("FW-AAA-PASSWORD-HISTORY-DISABLED", _check_aaa_password_history_disabled),
+    _spec("FW-AAA-PASSWORD-COMPLEXITY-DISABLED", _check_aaa_password_complexity_disabled),
     _spec("FW-SNMP-WEAK-COMMUNITY", _check_snmp_weak_community),
     _spec("FW-SNMP-V3", _check_snmp_v3),
     _spec("FW-NTP-MISSING", _check_ntp_missing),

@@ -268,6 +268,19 @@ class LocalAaaPasswordPolicy:
 
 
 @dataclass
+class UserPasswordComplexityCheck:
+    """A `user-password complexity-check [ three-of-kinds ]` command.
+
+    Scope is preserved explicitly because Huawei documents different effect and
+    default behavior for `aaa` and `local-aaa-server` / local-AAA scope.
+    """
+    scope: Traced[str]  # aaa | local-aaa-server
+    enabled: Traced[bool]
+    source: SourceRef
+    strength_mode: Optional[Traced[str]] = None  # e.g. three-of-kinds
+
+
+@dataclass
 class Hrp:
     """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
     source: SourceRef
@@ -304,6 +317,7 @@ class VrpConfig:
     user_interfaces: List[UserInterface] = field(default_factory=list)
     local_users: List[LocalUser] = field(default_factory=list)
     local_aaa_password_policies: List[LocalAaaPasswordPolicy] = field(default_factory=list)
+    user_password_complexity_checks: List[UserPasswordComplexityCheck] = field(default_factory=list)
     telnet_server_enabled: Optional[Traced[bool]] = None
     http_server_enabled: Optional[Traced[bool]] = None
     ssh_server_ciphers: List[Traced[str]] = field(default_factory=list)

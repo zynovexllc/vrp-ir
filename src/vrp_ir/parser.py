@@ -13,7 +13,7 @@ from typing import List, Optional
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
                      Hrp, Interface, Ipv4Address, LocalAaaPasswordPolicy,
                      LocalUser, LogHost, NatPolicyRule, NatServer, NtpServer,
-                     SecurityRule, ServiceSet,
+                     SecurityRule, ServiceSet, UserPasswordComplexityCheck,
                      ServiceSetItem, StaticRoute, UserInterface, Vlan,
                      VlanRange, Vrf, VrpConfig, SnmpCommunity, SnmpUsmUser)
 from .sourceref import SourceRef, Traced
@@ -69,7 +69,7 @@ def _parse_vlan_ranges(tokens: List[str], src: SourceRef) -> List[VlanRange]:
 
 def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
     cfg = VrpConfig(source_file=filename)
-    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy | natpolicy | aaa | aaa_policy
+    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy | natpolicy | aaa | localaaa | aaa_policy
     ctx_obj = None
     parent_ctx_kind: Optional[str] = None
     parent_ctx_obj = None
@@ -108,6 +108,10 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             continue
         if ctx_kind == "aaa_policy":
             if not _aaa_password_policy_line(ctx_obj, s, raw, filename, lineno):
+                cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
+            continue
+        if ctx_kind == "localaaa":
+            if not _local_aaa_server_line(cfg, ctx_obj, s, raw, filename, lineno):
                 cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
             continue
 
@@ -164,7 +168,12 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
             ctx_kind = "userif"
             continue
         if s == "aaa":
-            ctx_kind, ctx_obj = "aaa", None
+            src = SourceRef(filename, lineno, None, raw)
+            ctx_kind, ctx_obj = "aaa", Traced("aaa", src)
+            continue
+        if s == "local-aaa-server":
+            src = SourceRef(filename, lineno, None, raw)
+            ctx_kind, ctx_obj = "localaaa", Traced("local-aaa-server", src)
             continue
 
         # --- one-line globals ---
@@ -242,10 +251,12 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         elif ctx_kind == "userif":
             parsed = _user_interface_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "aaa":
-            parsed, next_policy = _aaa_line(cfg, s, raw, filename, lineno)
+            parsed, next_policy = _aaa_line(cfg, ctx_obj, s, raw, filename, lineno)
             if next_policy is not None:
-                parent_ctx_kind, parent_ctx_obj = "aaa", None
+                parent_ctx_kind, parent_ctx_obj = "aaa", ctx_obj
                 ctx_kind, ctx_obj = "aaa_policy", next_policy
+        elif ctx_kind == "localaaa":
+            parsed = _local_aaa_server_line(cfg, ctx_obj, s, raw, filename, lineno)
         if not parsed:
             cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
 
@@ -812,14 +823,84 @@ def _upsert_local_aaa_password_policy(
     return policy
 
 
+def _find_user_password_complexity_check(
+    cfg: VrpConfig, scope: str
+) -> Optional[UserPasswordComplexityCheck]:
+    for check in cfg.user_password_complexity_checks:
+        if check.scope.value == scope:
+            return check
+    return None
+
+
+def _upsert_user_password_complexity_check(
+    cfg: VrpConfig,
+    scope: Traced[str],
+    raw: str,
+    fn: str,
+    ln: int,
+    enabled: bool,
+    strength_mode: Optional[str],
+) -> None:
+    src = SourceRef(fn, ln, None, raw)
+    mode = None
+    if strength_mode is not None:
+        mode = Traced(strength_mode, SourceRef(fn, ln, _col(raw, strength_mode), raw))
+    check = _find_user_password_complexity_check(cfg, scope.value)
+    if check is None:
+        cfg.user_password_complexity_checks.append(
+            UserPasswordComplexityCheck(
+                scope=scope,
+                enabled=Traced(enabled, src),
+                source=src,
+                strength_mode=mode,
+            )
+        )
+        return
+    check.scope = scope
+    check.enabled = Traced(enabled, src)
+    check.source = src
+    check.strength_mode = mode
+
+
+def _user_password_complexity_line(
+    cfg: VrpConfig,
+    scope: Traced[str],
+    s: str,
+    raw: str,
+    fn: str,
+    ln: int,
+) -> bool:
+    if s == "undo user-password complexity-check":
+        _upsert_user_password_complexity_check(
+            cfg, scope, raw, fn, ln, enabled=False, strength_mode=None
+        )
+        return True
+    if s.startswith("user-password complexity-check"):
+        rest = s[len("user-password complexity-check"):].strip().split()
+        if not rest:
+            _upsert_user_password_complexity_check(
+                cfg, scope, raw, fn, ln, enabled=True, strength_mode=None
+            )
+            return True
+        if rest == ["three-of-kinds"]:
+            _upsert_user_password_complexity_check(
+                cfg, scope, raw, fn, ln, enabled=True, strength_mode="three-of-kinds"
+            )
+            return True
+        return False
+    return False
+
+
 def _aaa_line(
-    cfg: VrpConfig, s: str, raw: str, fn: str, ln: int
+    cfg: VrpConfig, scope: Traced[str], s: str, raw: str, fn: str, ln: int
 ) -> tuple[bool, Optional[LocalAaaPasswordPolicy]]:
     """Parse selected ``aaa``-view commands.
 
     Returns ``(parsed, policy_view)``. ``policy_view`` is non-``None`` only when
     the line opens a ``local-aaa-user password policy`` sub-view.
     """
+    if _user_password_complexity_line(cfg, scope, s, raw, fn, ln):
+        return True, None
     if s.startswith("undo local-aaa-user password policy "):
         scope = s[len("undo local-aaa-user password policy "):].strip()
         if scope in ("administrator", "access-user"):
@@ -854,6 +935,12 @@ def _aaa_line(
     cfg.local_users.append(LocalUser(name=Traced(name_tok, name_src),
                                      service_types=service_types, source=src))
     return True, None
+
+
+def _local_aaa_server_line(
+    cfg: VrpConfig, scope: Traced[str], s: str, raw: str, fn: str, ln: int
+) -> bool:
+    return _user_password_complexity_line(cfg, scope, s, raw, fn, ln)
 
 
 def _aaa_password_policy_line(
