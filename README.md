@@ -27,12 +27,13 @@ Huawei VRP .cfg  ──►  structured IR  ──►  every field knows its sour
 > ACL, static routes) **and USG firewall** (`firewall zone`, `security-policy`,
 > `nat-policy`, `nat server`, `ip address-set` / `ip service-set` objects, `hrp`,
 > and the **management plane** — `user-interface` con/vty, `ssh server cipher`,
-> `aaa` local-users, telnet/http switches, `info-center loghost`, and SNMPv3
-> users) parsed with full source provenance, plus a **security acceptance audit**
-> (`vrp-ir audit`, 16 checks) whose findings cite the exact config line. Recent
-> releases added evidence policy, coverage transparency, advisory standards
-> anchoring, SARIF/JUnit output, a check registry, and `vrp-ir checks` /
-> `vrp-ir explain`. Roadmap below.
+> `aaa` local-users, `local-aaa-user` password-policy views, telnet/http
+> switches, `info-center loghost`, and SNMPv3 users) parsed with full source
+> provenance, plus a **security acceptance audit** (`vrp-ir audit`, 16 checks)
+> whose findings cite the exact config line. Recent releases added evidence
+> policy, coverage transparency, advisory standards anchoring, SARIF/JUnit
+> output, a check registry, and `vrp-ir checks` / `vrp-ir explain`. Roadmap
+> below.
 
 > 💼 **Commercial** — `vrp-ir` is the open core of **AegisTwin**, a Huawei
 > security-integration **acceptance** workbench. Need customer-grade acceptance

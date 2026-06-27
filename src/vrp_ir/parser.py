@@ -11,8 +11,9 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .models import (Acl, AclRule, AddressSet, AddressSetMember, FirewallZone,
-                     Hrp, Interface, Ipv4Address, LocalUser, LogHost, NatPolicyRule,
-                     NatServer, NtpServer, SecurityRule, ServiceSet,
+                     Hrp, Interface, Ipv4Address, LocalAaaPasswordPolicy,
+                     LocalUser, LogHost, NatPolicyRule, NatServer, NtpServer,
+                     SecurityRule, ServiceSet,
                      ServiceSetItem, StaticRoute, UserInterface, Vlan,
                      VlanRange, Vrf, VrpConfig, SnmpCommunity, SnmpUsmUser)
 from .sourceref import SourceRef, Traced
@@ -68,15 +69,26 @@ def _parse_vlan_ranges(tokens: List[str], src: SourceRef) -> List[VlanRange]:
 
 def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
     cfg = VrpConfig(source_file=filename)
-    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy | natpolicy
+    ctx_kind: Optional[str] = None   # interface | vlan | vrf | acl | fwzone | secpolicy | natpolicy | aaa | aaa_policy
     ctx_obj = None
+    parent_ctx_kind: Optional[str] = None
+    parent_ctx_obj = None
 
     for lineno, raw in enumerate(text.splitlines(), start=1):
         s = raw.strip()
         if not s:
             continue  # blank lines must NOT close a block (hand-edited/saved .cfg may contain them)
-        if s == "#" or s == "return" or s == "quit":
+        if s == "#" or s == "return":
             ctx_kind, ctx_obj = None, None
+            parent_ctx_kind, parent_ctx_obj = None, None
+            continue
+        if s == "quit":
+            if parent_ctx_kind is not None:
+                ctx_kind, ctx_obj = parent_ctx_kind, parent_ctx_obj
+                parent_ctx_kind, parent_ctx_obj = None, None
+            else:
+                ctx_kind, ctx_obj = None, None
+                parent_ctx_kind, parent_ctx_obj = None, None
             continue
         if s.startswith("!"):
             if s.startswith("!Software Version"):
@@ -92,6 +104,10 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         # sub-commands like `acl 2000 inbound` are not mistaken for new contexts.
         if ctx_kind == "userif":
             if not _user_interface_line(ctx_obj, s, raw, filename, lineno):
+                cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
+            continue
+        if ctx_kind == "aaa_policy":
+            if not _aaa_password_policy_line(ctx_obj, s, raw, filename, lineno):
                 cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
             continue
 
@@ -226,7 +242,10 @@ def parse_text(text: str, filename: str = "<config>") -> VrpConfig:
         elif ctx_kind == "userif":
             parsed = _user_interface_line(ctx_obj, s, raw, filename, lineno)
         elif ctx_kind == "aaa":
-            parsed = _aaa_line(cfg, s, raw, filename, lineno)
+            parsed, next_policy = _aaa_line(cfg, s, raw, filename, lineno)
+            if next_policy is not None:
+                parent_ctx_kind, parent_ctx_obj = "aaa", None
+                ctx_kind, ctx_obj = "aaa_policy", next_policy
         if not parsed:
             cfg.unparsed_lines.append(SourceRef(filename, lineno, None, raw))
 
@@ -764,13 +783,61 @@ def _parse_ssh_server_cipher(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int)
             cfg.ssh_server_ciphers.append(Traced(tok, SourceRef(fn, ln, None, raw)))
 
 
-def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> bool:
-    """Parse ``local-user NAME service-type TYPE [TYPE ...]`` inside the aaa block."""
+def _find_local_aaa_password_policy(
+    cfg: VrpConfig, scope: str
+) -> Optional[LocalAaaPasswordPolicy]:
+    for policy in cfg.local_aaa_password_policies:
+        if policy.scope.value == scope:
+            return policy
+    return None
+
+
+def _upsert_local_aaa_password_policy(
+    cfg: VrpConfig, scope: str, raw: str, fn: str, ln: int, enabled: bool
+) -> LocalAaaPasswordPolicy:
+    src = SourceRef(fn, ln, None, raw)
+    scope_src = SourceRef(fn, ln, _col(raw, scope), raw)
+    policy = _find_local_aaa_password_policy(cfg, scope)
+    if policy is None:
+        policy = LocalAaaPasswordPolicy(
+            scope=Traced(scope, scope_src),
+            enabled=Traced(enabled, src),
+            source=src,
+        )
+        cfg.local_aaa_password_policies.append(policy)
+        return policy
+    policy.scope = Traced(scope, scope_src)
+    policy.enabled = Traced(enabled, src)
+    policy.source = src
+    return policy
+
+
+def _aaa_line(
+    cfg: VrpConfig, s: str, raw: str, fn: str, ln: int
+) -> tuple[bool, Optional[LocalAaaPasswordPolicy]]:
+    """Parse selected ``aaa``-view commands.
+
+    Returns ``(parsed, policy_view)``. ``policy_view`` is non-``None`` only when
+    the line opens a ``local-aaa-user password policy`` sub-view.
+    """
+    if s.startswith("undo local-aaa-user password policy "):
+        scope = s[len("undo local-aaa-user password policy "):].strip()
+        if scope in ("administrator", "access-user"):
+            _upsert_local_aaa_password_policy(cfg, scope, raw, fn, ln, enabled=False)
+            return True, None
+        return False, None
+    if s.startswith("local-aaa-user password policy "):
+        scope = s[len("local-aaa-user password policy "):].strip()
+        if scope in ("administrator", "access-user"):
+            policy = _upsert_local_aaa_password_policy(cfg, scope, raw, fn, ln, enabled=True)
+            return True, policy
+        return False, None
+    # Existing `aaa` support: `local-user NAME service-type TYPE [TYPE ...]`.
     if not s.startswith("local-user "):
-        return False
+        return False, None
     rest = s[len("local-user "):].split()
     if len(rest) < 3 or rest[1] != "service-type":
-        return True
+        return True, None
     name_tok = rest[0]
     name_src = SourceRef(fn, ln, _col(raw, name_tok), raw)
     src = SourceRef(fn, ln, None, raw)
@@ -786,7 +853,41 @@ def _aaa_line(cfg: VrpConfig, s: str, raw: str, fn: str, ln: int) -> bool:
             service_types.append(Traced(tok, SourceRef(fn, ln, None, raw)))
     cfg.local_users.append(LocalUser(name=Traced(name_tok, name_src),
                                      service_types=service_types, source=src))
-    return True
+    return True, None
+
+
+def _aaa_password_policy_line(
+    policy: LocalAaaPasswordPolicy, s: str, raw: str, fn: str, ln: int
+) -> bool:
+    if s.startswith("password expire "):
+        v = s[len("password expire "):].strip()
+        if v.isdigit():
+            policy.password_expire_days = Traced(int(v), SourceRef(fn, ln, _col(raw, v), raw))
+            return True
+        return False
+    if s.startswith("password alert before-expire "):
+        v = s[len("password alert before-expire "):].strip()
+        if v.isdigit():
+            policy.password_alert_before_expire_days = Traced(
+                int(v), SourceRef(fn, ln, _col(raw, v), raw)
+            )
+            return True
+        return False
+    if s == "password alert original":
+        policy.password_alert_original = Traced(True, SourceRef(fn, ln, None, raw))
+        return True
+    if s == "undo password alert original":
+        policy.password_alert_original = Traced(False, SourceRef(fn, ln, None, raw))
+        return True
+    if s.startswith("password history record number "):
+        v = s[len("password history record number "):].strip()
+        if v.isdigit():
+            policy.password_history_record_number = Traced(
+                int(v), SourceRef(fn, ln, _col(raw, v), raw)
+            )
+            return True
+        return False
+    return False
 
 
 def parse_file(path: str) -> VrpConfig:

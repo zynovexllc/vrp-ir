@@ -251,6 +251,23 @@ class LocalUser:
 
 
 @dataclass
+class LocalAaaPasswordPolicy:
+    """A ``local-aaa-user password policy {administrator|access-user}`` view.
+
+    This models only facts that are explicit in saved configuration text and
+    therefore safe to trace with ``SourceRef``. Audit work must key off
+    explicit weakening values, not command absence.
+    """
+    scope: Traced[str]  # administrator | access-user
+    enabled: Traced[bool]
+    source: SourceRef
+    password_expire_days: Optional[Traced[int]] = None
+    password_alert_before_expire_days: Optional[Traced[int]] = None
+    password_alert_original: Optional[Traced[bool]] = None
+    password_history_record_number: Optional[Traced[int]] = None
+
+
+@dataclass
 class Hrp:
     """Dual-node hot-standby (``hrp ...``) state for HA-consistency checks."""
     source: SourceRef
@@ -286,6 +303,7 @@ class VrpConfig:
     hrp: Optional[Hrp] = None
     user_interfaces: List[UserInterface] = field(default_factory=list)
     local_users: List[LocalUser] = field(default_factory=list)
+    local_aaa_password_policies: List[LocalAaaPasswordPolicy] = field(default_factory=list)
     telnet_server_enabled: Optional[Traced[bool]] = None
     http_server_enabled: Optional[Traced[bool]] = None
     ssh_server_ciphers: List[Traced[str]] = field(default_factory=list)
