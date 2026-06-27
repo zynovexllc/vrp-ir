@@ -58,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Parsing: `local-aaa-user password policy {administrator|access-user}` views,
+  including `password expire`, `password alert before-expire`,
+  `password alert original` / `undo password alert original`, and
+  `password history record number`, all with `SourceRef`.
+- Tests: a synthetic/de-identified golden fixture covering `local-aaa-user`
+  password-policy parsing and nested `quit` restoration back to the `aaa` view.
 - Audit: a **check registry** (`CheckSpec` + `registry()`) that pairs each check
   function with its id, intent, and advisory references in one place. Run order
   and output are unchanged; this is structured metadata, not a declarative DSL.
