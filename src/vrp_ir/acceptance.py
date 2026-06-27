@@ -38,6 +38,10 @@ CHECKS_META: Dict[str, str] = {
     "FW-MGMT-VTY-NO-ACL": "VTY management lines restrict inbound source with an ACL",
     "FW-SSH-WEAK-CIPHER": "SSH server does not use weak (CBC-mode / DES) ciphers",
     "FW-AAA-LOCAL-USER-TELNET": "Local AAA users are not granted the Telnet service type (cleartext)",
+    "FW-AAA-PASSWORD-EXPIRE-DISABLED": "Local AAA password-policy view does not explicitly disable password expiry",
+    "FW-AAA-PASSWORD-ALERT-DISABLED": "Local AAA password-policy view does not explicitly disable password expiry alerts",
+    "FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED": "Local AAA password-policy view does not explicitly disable initial-password change prompts",
+    "FW-AAA-PASSWORD-HISTORY-DISABLED": "Local AAA password-policy view does not explicitly disable password history reuse protection",
     "FW-SNMP-WEAK-COMMUNITY": "SNMP community is not a default/guessable string",
     "FW-SNMP-V3": "SNMP uses v3 with authentication and privacy (no v1/v2c)",
     "FW-NTP-MISSING": "At least one NTP server is configured",
@@ -441,6 +445,56 @@ def _check_aaa_local_user_telnet(cfg: VrpConfig) -> Iterable[Finding]:
                 break
 
 
+def _check_aaa_password_expire_disabled(cfg: VrpConfig) -> Iterable[Finding]:
+    for policy in cfg.local_aaa_password_policies:
+        if policy.password_expire_days is None or policy.password_expire_days.value != 0:
+            continue
+        yield Finding(
+            "FW-AAA-PASSWORD-EXPIRE-DISABLED", "medium", "warn",
+            f"Local AAA password policy ({policy.scope.value}) sets "
+            f"'password expire 0'; passwords never expire under this policy.",
+            [policy.password_expire_days.source])
+
+
+def _check_aaa_password_alert_disabled(cfg: VrpConfig) -> Iterable[Finding]:
+    for policy in cfg.local_aaa_password_policies:
+        if (
+            policy.password_alert_before_expire_days is None
+            or policy.password_alert_before_expire_days.value != 0
+        ):
+            continue
+        yield Finding(
+            "FW-AAA-PASSWORD-ALERT-DISABLED", "low", "warn",
+            f"Local AAA password policy ({policy.scope.value}) sets "
+            f"'password alert before-expire 0'; users receive no expiry warning.",
+            [policy.password_alert_before_expire_days.source])
+
+
+def _check_aaa_password_initial_change_disabled(cfg: VrpConfig) -> Iterable[Finding]:
+    for policy in cfg.local_aaa_password_policies:
+        if policy.password_alert_original is None or policy.password_alert_original.value:
+            continue
+        yield Finding(
+            "FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED", "medium", "warn",
+            f"Local AAA password policy ({policy.scope.value}) explicitly disables "
+            f"initial-password change prompting with 'undo password alert original'.",
+            [policy.password_alert_original.source])
+
+
+def _check_aaa_password_history_disabled(cfg: VrpConfig) -> Iterable[Finding]:
+    for policy in cfg.local_aaa_password_policies:
+        if (
+            policy.password_history_record_number is None
+            or policy.password_history_record_number.value != 0
+        ):
+            continue
+        yield Finding(
+            "FW-AAA-PASSWORD-HISTORY-DISABLED", "medium", "warn",
+            f"Local AAA password policy ({policy.scope.value}) sets "
+            f"'password history record number 0'; password reuse protection is disabled.",
+            [policy.password_history_record_number.source])
+
+
 def _check_snmp_weak_community(cfg: VrpConfig) -> Iterable[Finding]:
     for community in cfg.snmp_communities:
         if community.community is None:
@@ -482,7 +536,8 @@ def _has_device_acceptance_scope(cfg: VrpConfig) -> bool:
         cfg.interfaces or cfg.acls or cfg.static_routes or cfg.firewall_zones or
         cfg.security_rules or cfg.address_sets or cfg.service_sets or
         cfg.nat_policy_rules or cfg.nat_servers or cfg.hrp or cfg.user_interfaces or
-        cfg.local_users or cfg.telnet_server_enabled is not None or
+        cfg.local_users or cfg.local_aaa_password_policies or
+        cfg.telnet_server_enabled is not None or
         cfg.http_server_enabled is not None or cfg.ssh_server_ciphers or cfg.log_hosts
     )
 
@@ -537,6 +592,14 @@ CHECK_REFERENCES: Dict[str, List[StandardRef]] = {
         StandardRef("CIS-style", "Use SNMPv3 with auth+privacy; disable v1/v2c")],
     "FW-AAA-LOCAL-USER-TELNET": _dengbao("身份鉴别：账户不授予明文服务") + [
         StandardRef("Huawei-hardening", "Do not grant Telnet service-type")],
+    "FW-AAA-PASSWORD-EXPIRE-DISABLED": _dengbao("身份鉴别：口令应定期更换") + [
+        StandardRef("Huawei-hardening", "Avoid 'password expire 0' in local AAA password policy")],
+    "FW-AAA-PASSWORD-ALERT-DISABLED": _dengbao("身份鉴别：口令到期前应提醒更换") + [
+        StandardRef("Huawei-hardening", "Avoid 'password alert before-expire 0' in local AAA password policy")],
+    "FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED": _dengbao("身份鉴别：初始口令登录后应提示修改") + [
+        StandardRef("Huawei-hardening", "Do not disable initial-password change prompting")],
+    "FW-AAA-PASSWORD-HISTORY-DISABLED": _dengbao("身份鉴别：应防止历史口令重复使用") + [
+        StandardRef("Huawei-hardening", "Do not set 'password history record number 0'")],
     "FW-NTP-MISSING": _dengbao("时间同步：配置可信 NTP 以保证日志可追溯") + [
         StandardRef("CIS-style", "Configure trusted NTP for log correlation")],
 }
@@ -577,6 +640,10 @@ REGISTRY: List[CheckSpec] = [
     _spec("FW-MGMT-VTY-NO-ACL", _check_vty_no_acl),
     _spec("FW-SSH-WEAK-CIPHER", _check_ssh_weak_cipher),
     _spec("FW-AAA-LOCAL-USER-TELNET", _check_aaa_local_user_telnet),
+    _spec("FW-AAA-PASSWORD-EXPIRE-DISABLED", _check_aaa_password_expire_disabled),
+    _spec("FW-AAA-PASSWORD-ALERT-DISABLED", _check_aaa_password_alert_disabled),
+    _spec("FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED", _check_aaa_password_initial_change_disabled),
+    _spec("FW-AAA-PASSWORD-HISTORY-DISABLED", _check_aaa_password_history_disabled),
     _spec("FW-SNMP-WEAK-COMMUNITY", _check_snmp_weak_community),
     _spec("FW-SNMP-V3", _check_snmp_v3),
     _spec("FW-NTP-MISSING", _check_ntp_missing),

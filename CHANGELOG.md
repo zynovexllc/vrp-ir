@@ -58,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Audit: explicit-weakening checks for `local-aaa-user password policy` views:
+  `FW-AAA-PASSWORD-EXPIRE-DISABLED`,
+  `FW-AAA-PASSWORD-ALERT-DISABLED`,
+  `FW-AAA-PASSWORD-INITIAL-CHANGE-DISABLED`, and
+  `FW-AAA-PASSWORD-HISTORY-DISABLED`. These fire only on explicit weakening
+  values, never on command absence or guessed defaults.
 - Parsing: `local-aaa-user password policy {administrator|access-user}` views,
   including `password expire`, `password alert before-expire`,
   `password alert original` / `undo password alert original`, and
