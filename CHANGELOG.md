@@ -5,6 +5,26 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0](https://github.com/zynovexllc/vrp-ir/compare/v0.9.0...v0.10.0) (2026-07-01)
+
+
+### Features
+
+* **audit:** flag explicit AAA password weakening ([#96](https://github.com/zynovexllc/vrp-ir/issues/96)) ([#97](https://github.com/zynovexllc/vrp-ir/issues/97)) ([cbcc580](https://github.com/zynovexllc/vrp-ir/commit/cbcc580a655fa78ed87a1f1891e537a6d81d8ea9))
+* **cli:** add `--version` / `-V` flag ([#106](https://github.com/zynovexllc/vrp-ir/issues/106)) ([5a461db](https://github.com/zynovexllc/vrp-ir/commit/5a461dbb0a240da22949b010d3d1ec46c2500057))
+* **parser:** add scope-aware password complexity checks ([#100](https://github.com/zynovexllc/vrp-ir/issues/100)) ([#102](https://github.com/zynovexllc/vrp-ir/issues/102)) ([a74590f](https://github.com/zynovexllc/vrp-ir/commit/a74590ffacb8c73812f196eabce60d30d9c04684))
+* **parser:** parse local-aaa-user password policy views ([#93](https://github.com/zynovexllc/vrp-ir/issues/93)) ([#95](https://github.com/zynovexllc/vrp-ir/issues/95)) ([1f5fa2a](https://github.com/zynovexllc/vrp-ir/commit/1f5fa2a742f63fc8b0309b445f9f83157d47794b))
+
+
+### Documentation
+
+* add corpus intake runbook and private handoff path ([#90](https://github.com/zynovexllc/vrp-ir/issues/90)) ([698785d](https://github.com/zynovexllc/vrp-ir/commit/698785d861aa6e47f238d964fe023818b71e421a))
+* add de-identified corpus request templates ([#91](https://github.com/zynovexllc/vrp-ir/issues/91)) ([708f4bc](https://github.com/zynovexllc/vrp-ir/commit/708f4bc8e0941fd5497b41e5d45fa58db8f5bae1))
+* codify phased program and sync roadmap surfaces ([#88](https://github.com/zynovexllc/vrp-ir/issues/88)) ([23be19b](https://github.com/zynovexllc/vrp-ir/commit/23be19bf95c825247993fc2bee6e2af8b76f0002))
+* conclude password complexity model split ([#98](https://github.com/zynovexllc/vrp-ir/issues/98)) ([#101](https://github.com/zynovexllc/vrp-ir/issues/101)) ([aeb69c0](https://github.com/zynovexllc/vrp-ir/commit/aeb69c05a0a28a17d60b6c6bd50dc3217b45ef88))
+* narrow manual phase-2 AAA boundary ([#92](https://github.com/zynovexllc/vrp-ir/issues/92)) ([#94](https://github.com/zynovexllc/vrp-ir/issues/94)) ([036c770](https://github.com/zynovexllc/vrp-ir/commit/036c770ab1b4e9a23e8e0d161a34c7703babbade))
+* start password complexity analysis batch ([#98](https://github.com/zynovexllc/vrp-ir/issues/98)) ([#99](https://github.com/zynovexllc/vrp-ir/issues/99)) ([a647ef8](https://github.com/zynovexllc/vrp-ir/commit/a647ef841a71b9fd138acd1eaab1c339181c251a))
+
 ## [0.9.0](https://github.com/zynovexllc/vrp-ir/compare/v0.8.0...v0.9.0) (2026-06-25)
 
 
