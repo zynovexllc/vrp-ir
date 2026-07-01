@@ -34,7 +34,9 @@ def main(argv=None) -> int:
     pa.add_argument("--strict", action="store_true",
                     help="Exit non-zero if any check fails (CI gate).")
 
-    sub.add_parser("checks", help="List all audit checks.")
+    pc = sub.add_parser("checks", help="List all audit checks.")
+    pc.add_argument("--format", choices=["text", "json"], default="text",
+                    help="Output format (default: text).")
 
     pe = sub.add_parser("explain", help="Explain one audit check by id.")
     pe.add_argument("check_id", help="A check id, e.g. FW-DEFAULT-DENY.")
@@ -59,8 +61,13 @@ def main(argv=None) -> int:
             sys.stdout.write(render_markdown(report))
         return 1 if (args.strict and report.result == "fail") else 0
     if args.command == "checks":
-        for c in list_checks():
-            sys.stdout.write(f"{c['check_id']}  —  {c['intent']}\n")
+        checks = list_checks()
+        if args.format == "json":
+            json.dump(checks, sys.stdout, ensure_ascii=False, indent=2)
+            sys.stdout.write("\n")
+        else:
+            for c in checks:
+                sys.stdout.write(f"{c['check_id']}  —  {c['intent']}\n")
         return 0
     if args.command == "explain":
         info = explain_check(args.check_id)
