@@ -14,12 +14,15 @@ import sys
 from .acceptance import (explain_check, list_checks, render_junit,
                          render_markdown, render_sarif, run_checks)
 from .parser import parse_file
+from . import __version__
 
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="vrp-ir",
         description="Parse a Huawei VRP configuration into a source-traceable IR.")
+    p.add_argument("-V", "--version", action="version",
+                   version=f"vrp-ir {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
     pp = sub.add_parser("parse", help="Parse a VRP config file to JSON IR.")

@@ -3,7 +3,7 @@ import io
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
 
-from vrp_ir import explain_check, list_checks
+from vrp_ir import explain_check, list_checks, __version__
 from vrp_ir.acceptance import CHECKS_META
 from vrp_ir.cli import main
 
@@ -51,6 +51,22 @@ class TestCli(unittest.TestCase):
             code = main(["explain", "NOPE"])
         self.assertEqual(code, 2)
         self.assertIn("unknown check id", err.getvalue())
+
+    def test_cli_version_long(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as cm:
+                main(["--version"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn(f"vrp-ir {__version__}", buf.getvalue())
+
+    def test_cli_version_short(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as cm:
+                main(["-V"])
+        self.assertEqual(cm.exception.code, 0)
+        self.assertIn(f"vrp-ir {__version__}", buf.getvalue())
 
 
 if __name__ == "__main__":
