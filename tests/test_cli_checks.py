@@ -1,5 +1,6 @@
 """Tests for `vrp-ir checks` and `vrp-ir explain <CHECK_ID>`."""
 import io
+import json
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -26,14 +27,31 @@ class TestListAndExplain(unittest.TestCase):
 
 class TestCli(unittest.TestCase):
 
-    def test_cli_checks_lists_ids(self):
+    def test_cli_checks_text_mode_unchanged(self):
         buf = io.StringIO()
         with redirect_stdout(buf):
             code = main(["checks"])
         out = buf.getvalue()
+        expected = "".join(
+            f"{c['check_id']}  —  {c['intent']}\n"
+            for c in list_checks()
+        )
         self.assertEqual(code, 0)
-        self.assertIn("FW-DEFAULT-DENY", out)
-        self.assertIn("FW-SNMP-WEAK-COMMUNITY", out)
+        self.assertEqual(out, expected)
+
+    def test_cli_checks_json_mode(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = main(["checks", "--format", "json"])
+        out = buf.getvalue()
+        payload = json.loads(out)
+        self.assertEqual(code, 0)
+        self.assertIsInstance(payload, list)
+        self.assertEqual(
+            {c["check_id"] for c in payload},
+            {c["check_id"] for c in list_checks()},
+        )
+        self.assertTrue(all("intent" in c for c in payload))
 
     def test_cli_explain_known(self):
         buf = io.StringIO()
